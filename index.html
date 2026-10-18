@@ -231,6 +231,12 @@
         /* Alertes, confirmations et saisies : toujours au-dessus des autres fenêtres (Paramètres, cadeau, participation…) */
         #custom-modal { z-index: 100 !important; }
 
+        /* Mobile : un champ < 16px déclenche un zoom automatique du navigateur au focus (page décalée ensuite) */
+        @media (max-width: 639px) {
+            input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px !important; }
+        }
+        button, a, summary, label { touch-action: manipulation; }
+
         /* Empêche tout élément d'élargir la page sur mobile (évite d'avoir à pincer l'écran) */
         img, svg, video, canvas { max-width: 100%; }
         input, select, textarea, button { max-width: 100%; }
@@ -361,7 +367,7 @@
                         </div>
                         <div class="min-w-0">
                             <h1 class="font-christmas text-xl sm:text-2xl font-bold text-amber-500 dark:text-amber-400 tracking-wide leading-none truncate">Liste de Noël en famille</h1>
-                            <p class="text-[11px] sm:text-xs dark:text-slate-400 text-slate-500 mt-0.5 truncate">Bonjour <span id="current-user-display" class="font-semibold dark:text-white text-slate-800">...</span> 🎅</p>
+                            <p class="text-xs sm:text-sm dark:text-slate-400 text-slate-500 mt-1 truncate">Bonjour <span id="current-user-display" class="text-sm sm:text-base font-bold dark:text-white text-slate-800">...</span> 🎅</p>
                         </div>
                     </div>
 
