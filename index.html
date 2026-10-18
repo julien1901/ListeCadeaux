@@ -1,0 +1,2874 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover">
+    <title>Liste de Noël en famille</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        christmasRed: '#b91c1c',
+                        christmasGreen: '#166534',
+                        christmasGold: '#d97706',
+                        christmasCream: '#fefce8',
+                        christmasDark: '#1e293b'
+                    },
+                    fontFamily: {
+                        christmas: ['"Mountains of Christmas"', 'cursive', 'Georgia', 'serif'],
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Mountains+of+Christmas:wght@400;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome 6.4.0 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS SDK v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Flocons de neige en arrière-plan */
+        .snowflake {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 1em;
+            font-family: Arial, sans-serif;
+            text-shadow: 0 0 6px rgba(255,255,255,0.6);
+            position: absolute;
+            top: -10%;
+            z-index: 1;
+            user-select: none;
+            pointer-events: none;
+            animation: fall linear infinite;
+        }
+        /* Mode clair : flocons rosés/dorés ou sombres discrets pour contraster sur fond crème */
+        html:not(.dark) .snowflake {
+            color: rgba(185, 28, 28, 0.45);
+            text-shadow: 0 0 4px rgba(217, 119, 6, 0.3);
+        }
+        @keyframes fall {
+            0% { top: -10%; transform: translateX(0) rotate(0deg); }
+            50% { transform: translateX(15px) rotate(180deg); }
+            100% { top: 105vh; transform: translateX(-15px) rotate(360deg); }
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d97706;
+            border-radius: 4px;
+        }
+        .card-glow {
+            position: relative;
+        }
+        .card-glow::after {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            background: linear-gradient(to right, rgba(185,28,28,0.2), rgba(217,119,6,0.2));
+            border-radius: inherit;
+            z-index: -1;
+            filter: blur(8px);
+            opacity: 0.7;
+        }
+        /* Style prix dédié */
+        .price-display {
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: baseline;
+            white-space: nowrap;
+        }
+        .price-integer {
+            font-weight: 800;
+        }
+        .price-comma {
+            font-weight: 800;
+        }
+        .price-decimal {
+            font-size: 0.85em;
+            opacity: 0.7;
+            font-weight: 600;
+        }
+        .price-currency {
+            margin-left: 0.15em;
+        }
+
+        /* ===== Lignes de cadeaux : colonnes fixes pour des icônes toujours alignées ===== */
+        .gift-row { display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; transition: background-color .15s; }
+        .gift-row:hover { background-color: rgba(148, 163, 184, 0.08); }
+        .gift-main { min-width: 0; }
+        .gift-title { display: block; font-weight: 700; font-size: 1rem; line-height: 1.35; margin-bottom: .25rem;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .gift-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem .625rem; margin-bottom: .25rem; min-height: 1.5rem; }
+        .gift-meta > * { white-space: nowrap; }
+        .gift-side { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem;
+            padding-top: .5rem; border-top: 1px solid rgba(148, 163, 184, 0.25); }
+        .gift-status { display: flex; align-items: center; }
+        .gift-status > span { white-space: nowrap; }
+        .gift-actions { display: flex; flex-direction: column; align-items: stretch; gap: .5rem; width: 100%; order: 3; }
+        .gift-actions button { white-space: nowrap; }
+        .gift-icons { display: flex; align-items: center; justify-content: flex-end; gap: .25rem; }
+        .gift-icon-btn { width: 2.25rem; height: 2.25rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .gift-icon-slot { width: 2.25rem; height: 2.25rem; flex-shrink: 0; }
+        @media (min-width: 640px) {
+            .gift-row { display: grid; align-items: center; column-gap: 1rem; }
+            .gift-row--mine   { grid-template-columns: minmax(0, 1fr) 10rem 4.75rem; }
+            .gift-row--family { grid-template-columns: minmax(0, 1fr) 7.5rem 17rem 2.25rem; }
+            .gift-row--resa   { grid-template-columns: minmax(0, 1fr) 6.5rem 10.5rem; }
+            .gift-side { display: contents; }
+            .gift-status { justify-content: center; }
+            .gift-actions { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; width: auto; order: 0; }
+        }
+
+        /* ===== Cartes cadeau (liste des autres membres) ===== */
+        .gcard { position: relative; border-radius: 1.25rem; padding: 1rem 1rem 1rem 1.1rem; border: 1px solid rgba(148,163,184,.25);
+            border-left-width: 5px; box-shadow: 0 1px 3px rgba(0,0,0,.12); transition: box-shadow .15s, transform .15s; }
+        .gcard:hover { box-shadow: 0 8px 20px rgba(0,0,0,.18); transform: translateY(-1px); }
+        .gcard--available { border-left-color: #10b981; }
+        .gcard--reserved  { border-left-color: #f59e0b; }
+        .gcard--bought    { border-left-color: #3b82f6; }
+        .gcard--wrapped   { border-left-color: #a855f7; }
+        .gcard-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; }
+        .gcard-title { font-weight: 700; font-size: 1.05rem; line-height: 1.3; overflow-wrap: anywhere;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .gcard-badge { flex-shrink: 0; white-space: nowrap; }
+        .gcard-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem .75rem; margin-top: .5rem; }
+        .gcard-meta > * { white-space: nowrap; }
+        .gcard-desc { margin-top: .4rem; font-size: .8rem; line-height: 1.4;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .gcard-link { display: inline-flex; align-items: center; gap: .3rem; margin-top: .4rem; font-size: .75rem; font-weight: 600; }
+        .gcard-pot { display: flex; align-items: center; gap: .625rem; margin-top: .65rem; font-size: .75rem; font-weight: 600; }
+        .gcard-pot-bar { flex: 1; min-width: 3rem; height: 6px; border-radius: 9999px; background: rgba(148,163,184,.3); overflow: hidden; }
+        .gcard-pot-fill { height: 100%; border-radius: 9999px; background: linear-gradient(90deg, #dc2626, #f59e0b); transition: width .3s; }
+        .gcard-who { margin-top: .35rem; font-size: .7rem; opacity: .75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .gcard-foot { display: flex; align-items: center; gap: .5rem; margin-top: .9rem; }
+        .gcard-foot .gbtn { flex: 1; text-align: center; white-space: nowrap; }
+        @media (min-width: 640px) { .gcard-foot .gbtn { flex: 0 0 auto; } }
+        .gmenu { position: relative; margin-left: auto; flex-shrink: 0; }
+        .gmenu > summary { list-style: none; cursor: pointer; width: 2.25rem; height: 2.25rem; display: inline-flex; align-items: center;
+            justify-content: center; border-radius: .75rem; color: #94a3b8; user-select: none; }
+        .gmenu > summary::-webkit-details-marker { display: none; }
+        .gmenu > summary:hover, .gmenu[open] > summary { background: rgba(148,163,184,.2); color: #f59e0b; }
+        .gmenu-pop { position: absolute; right: 0; top: calc(100% + 4px); z-index: 40; min-width: 13.5rem; padding: .35rem; border-radius: .9rem;
+            background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 12px 28px rgba(0,0,0,.25); }
+        .dark .gmenu-pop { background: #1e293b; border-color: #334155; }
+        .gmenu-pop button { display: flex; align-items: center; gap: .6rem; width: 100%; text-align: left; padding: .55rem .7rem;
+            border-radius: .6rem; font-size: .8rem; font-weight: 500; color: #334155; }
+        .dark .gmenu-pop button { color: #e2e8f0; }
+        .gmenu-pop button:hover { background: rgba(148,163,184,.18); }
+        .gmenu-pop button i { width: 1rem; text-align: center; color: #94a3b8; }
+        .gmenu-pop button.is-danger, .gmenu-pop button.is-danger i { color: #ef4444; }
+        .gmenu-pop button.is-danger:hover { background: rgba(239,68,68,.12); }
+        .gmenu-pop hr { margin: .3rem 0; border: 0; border-top: 1px solid rgba(148,163,184,.25); }
+
+        /* ===== Mode clair : contrastes des textes et zones restées sombres ===== */
+        html:not(.dark) .text-amber-300, html:not(.dark) .text-amber-400, html:not(.dark) .text-amber-500, html:not(.dark) .text-amber-600 { color: #b45309; }
+        html:not(.dark) .text-red-300, html:not(.dark) .text-red-400 { color: #b91c1c; }
+        html:not(.dark) .text-emerald-300, html:not(.dark) .text-emerald-400 { color: #047857; }
+        html:not(.dark) .text-blue-300, html:not(.dark) .text-blue-400 { color: #1d4ed8; }
+        html:not(.dark) .text-purple-300, html:not(.dark) .text-purple-400 { color: #7e22ce; }
+        html:not(.dark) .text-slate-400 { color: #64748b; }
+        html:not(.dark) .text-slate-500 { color: #556274; }
+        html:not(.dark) .bg-black\/70 { background-color: rgba(15, 23, 42, 0.45); }
+        html:not(.dark) .gmenu > summary { color: #64748b; }
+        html:not(.dark) .gcard { box-shadow: 0 1px 4px rgba(15, 23, 42, .08); }
+        html:not(.dark) .gcard:hover { box-shadow: 0 8px 20px rgba(15, 23, 42, .12); }
+        html:not(.dark) .gcard-pot-bar { background: rgba(100, 116, 139, .25); }
+        html:not(.dark) ::placeholder { color: #94a3b8; }
+
+        /* ===== Menu « ⋯ » : toujours au-dessus des cartes suivantes ===== */
+        .gcard.gcard-open { z-index: 60; }
+        .gmenu.gmenu-up .gmenu-pop { top: auto; bottom: calc(100% + 4px); }
+
+        /* ===== Commentaires ===== */
+        .gcomment-btn { margin-left: auto; display: inline-flex; align-items: center; gap: .4rem; height: 2.25rem; padding: 0 .75rem; border-radius: .75rem;
+            font-size: .75rem; font-weight: 600; color: #64748b; border: 1px solid rgba(148,163,184,.35); transition: background .15s, color .15s; flex-shrink: 0; }
+        .dark .gcomment-btn { color: #94a3b8; }
+        .gcomment-btn:hover, .gcomment-btn.is-open { background: rgba(245,158,11,.15); color: #d97706; border-color: rgba(245,158,11,.5); }
+        .gcomment-btn + .gmenu { margin-left: 0; }
+        .gcomment-count { min-width: 1.15rem; padding: 0 .3rem; border-radius: 9999px; background: #f59e0b; color: #fff; font-size: .65rem; line-height: 1.15rem; text-align: center; }
+        .gcomments { margin-top: .85rem; padding-top: .85rem; border-top: 1px dashed rgba(148,163,184,.4); }
+        .gc-item { display: flex; gap: .6rem; padding: .35rem 0; }
+        .gc-avatar { width: 1.75rem; height: 1.75rem; border-radius: 9999px; background: linear-gradient(135deg, #dc2626, #f59e0b); color: #fff;
+            font-size: .7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .gc-bubble { background: #f1f5f9; border-radius: .25rem 1rem 1rem 1rem; padding: .45rem .8rem; min-width: 0; max-width: 100%; }
+        .dark .gc-bubble { background: #1e293b; }
+        .gc-item.is-mine .gc-bubble { background: #fef3c7; }
+        .dark .gc-item.is-mine .gc-bubble { background: rgba(245,158,11,.15); }
+        .gc-head { display: flex; align-items: center; gap: .5rem; font-size: .72rem; }
+        .gc-name { font-weight: 700; color: #b45309; }
+        .dark .gc-name { color: #fbbf24; }
+        .gc-date { color: #64748b; }
+        .gc-del { margin-left: auto; color: #94a3b8; padding: 0 .25rem; }
+        .gc-del:hover { color: #ef4444; }
+        .gc-text { margin-top: .1rem; font-size: .83rem; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; color: #1e293b; }
+        .dark .gc-text { color: #e2e8f0; }
+        .gc-empty { font-size: .78rem; color: #64748b; padding: .25rem 0 .5rem; }
+        .gc-form { display: flex; align-items: flex-end; gap: .5rem; margin-top: .6rem; }
+        .gc-input { flex: 1; min-width: 0; resize: none; border-radius: .9rem; border: 1px solid #cbd5e1; background: #fff; color: #0f172a;
+            padding: .55rem .85rem; font-size: .83rem; line-height: 1.3; max-height: 7rem; font-family: inherit; }
+        .dark .gc-input { background: #0f172a; border-color: #334155; color: #f1f5f9; }
+        .gc-input:focus { outline: none; border-color: #f59e0b; }
+        .gc-send { flex-shrink: 0; width: 2.5rem; height: 2.5rem; border-radius: .9rem; color: #fff; background: linear-gradient(90deg, #dc2626, #d97706); }
+        .gc-send:hover { filter: brightness(1.1); }
+        .gc-note { margin-top: .4rem; font-size: .68rem; color: #64748b; }
+
+        .cd-unit { font-size: .65rem; font-weight: 600; opacity: .85; margin-left: 1px; }
+
+        /* Alertes, confirmations et saisies : toujours au-dessus des autres fenêtres (Paramètres, cadeau, participation…) */
+        #custom-modal { z-index: 100 !important; }
+
+        /* Empêche tout élément d'élargir la page sur mobile (évite d'avoir à pincer l'écran) */
+        img, svg, video, canvas { max-width: 100%; }
+        input, select, textarea, button { max-width: 100%; }
+        main, header, section { max-width: 100vw; }
+    </style>
+
+<script>(window.BOOMR_mq=window.BOOMR_mq||[]).push(["addVar",{"rua.upush":"false","rua.cpush":"false","rua.upre":"false","rua.cpre":"false","rua.uprl":"false","rua.cprl":"false","rua.cprf":"false","rua.trans":"","rua.cook":"false","rua.ims":"false","rua.ufprl":"false","rua.cfprl":"false","rua.isuxp":"false","rua.texp":"norulematch","rua.ceh":"false","rua.ueh":"false","rua.ieh.st":"0"}]);</script>
+                                <script>!function(e){var n="https://s.go-mpulse.net/boomerang/";if("False"=="True")e.BOOMR_config=e.BOOMR_config||{},e.BOOMR_config.PageParams=e.BOOMR_config.PageParams||{},e.BOOMR_config.PageParams.pci=!0,n="https://s2.go-mpulse.net/boomerang/";if(window.BOOMR_API_key="FUH8N-CDUVM-4DQS5-MSY94-6X9AF",function(){function e(){if(!i){var e=document.createElement("script");e.id="boomr-scr-as",e.src=window.BOOMR.url,e.async=!0,o.parentNode.appendChild(e),i=!0}}function t(e){i=!0;var n,t,a,r,d=document,O=window;if(window.BOOMR.snippetMethod=e?"if":"i",t=function(e,n){var t=d.createElement("script");t.id=n||"boomr-if-as",t.src=window.BOOMR.url,BOOMR_lstart=(new Date).getTime(),e=e||d.body,e.appendChild(t)},!window.addEventListener&&window.attachEvent&&navigator.userAgent.match(/MSIE [67]\./))return window.BOOMR.snippetMethod="s",void t(o.parentNode,"boomr-async");a=document.createElement("IFRAME"),a.src="about:blank",a.title="",a.role="presentation",a.loading="eager",r=(a.frameElement||a).style,r.width=0,r.height=0,r.border=0,r.display="none",o.parentNode.appendChild(a);try{O=a.contentWindow,d=O.document.open()}catch(_){n=document.domain,a.src="javascript:var d=document.open();d.domain='"+n+"';void(0);",O=a.contentWindow,d=O.document.open()}if(n)d._boomrl=function(){this.domain=n,t()},d.write("<bo"+"dy onload='document._boomrl();'>");else if(O._boomrl=function(){t()},O.addEventListener)O.addEventListener("load",O._boomrl,!1);else if(O.attachEvent)O.attachEvent("onload",O._boomrl);d.close()}function a(e){window.BOOMR_onload=e&&e.timeStamp||(new Date).getTime()}if(!window.BOOMR||!window.BOOMR.version&&!window.BOOMR.snippetExecuted){window.BOOMR=window.BOOMR||{},window.BOOMR.snippetStart=(new Date).getTime(),window.BOOMR.snippetExecuted=!0,window.BOOMR.snippetVersion=12,window.BOOMR.url=n+"FUH8N-CDUVM-4DQS5-MSY94-6X9AF";var o=document.currentScript||document.getElementsByTagName("script")[0],i=!1,r=document.createElement("link");if(r.relList&&"function"==typeof r.relList.supports&&r.relList.supports("preload")&&"as"in r)window.BOOMR.snippetMethod="p",r.href=window.BOOMR.url,r.rel="preload",r.as="script",r.addEventListener("load",e),r.addEventListener("error",function(){t(!0)}),setTimeout(function(){if(!i)t(!0)},3e3),BOOMR_lstart=(new Date).getTime(),o.parentNode.appendChild(r);else t(!1);if(window.addEventListener)window.addEventListener("load",a,!1);else if(window.attachEvent)window.attachEvent("onload",a)}}(),"".length>0)if(e&&"performance"in e&&e.performance&&"function"==typeof e.performance.setResourceTimingBufferSize)e.performance.setResourceTimingBufferSize();!function(){if(BOOMR=e.BOOMR||{},BOOMR.plugins=BOOMR.plugins||{},!BOOMR.plugins.AK){var n=""=="true"?1:0,t="",a="fia4waejihtaakqce3ycxaaaf5vne4fw-f-429bd604d-clienttons-s.akamaihd.net",o="false"=="true"?2:1,i={"ak.v":"41","ak.cp":"1651733","ak.ai":parseInt("1063671",10),"ak.ol":"0","ak.cr":18,"ak.ipv":6,"ak.proto":"h2","ak.rid":"13d0140a","ak.r":51300,"ak.a2":n,"ak.m":"dsca","ak.n":"essl","ak.cport":57783,"ak.gh":"2.21.142.80","ak.quicv":"","ak.tlsv":"tls1.3","ak.0rtt":"","ak.0rtt.ed":"","ak.csrc":"-","ak.acc":"","ak.t":"1792176310","ak.ak":"hOBiQwZUYzCg5VSAfCLimQ==aXAi6EsIPYhvwjdm6kRciamGoUXl/1AqabIGp2w76OPYOBL0GT9LmuPJ/KuJgTq1OYGqSakzfSt8f+3kvdIlWIgwuUVioXyumnxX94kfq25fp4X32ctxh/MRN85BcvI5n7VDTTW3hdjZ0C55+8CQYSPy9ayYUpJqP2CpjrUmoTJGpEvkR8THkrJk51iHD67g3EnLJ/l/qC+il1yDEx64UlNtzI9whFvgi3BUbS/EzB2Ts4tg6JOIZacHVSsnGvw7cgRtkCOr5KLVva5ZeWDio5waJy7CxzJUulpWrY7C7ZfHpesMm8TyYBBAwzL8ejwQxRP2eTQa+cxeQypbdfGrFaPqM0fIHOW46EWllKY2qJsBYN7leIeWXc3dhEHKTo+zRLLEglgK6RQvl6a9UcaTJ84cPVByTGJkx3335+bioVc=","ak.pv":"3","ak.dpoabenc":"","ak.tf":o};if(""!==t)i["ak.ruds"]=t;var r={i:!1,av:function(n){var t="http.initiator";if(n&&(!n[t]||"spa_hard"===n[t]))i["ak.feo"]=void 0!==e.aFeoApplied?1:0,BOOMR.addVar(i)},rv:function(){var e=["ak.cport","ak.cr","ak.csrc","ak.gh","ak.ipv","ak.m","ak.n","ak.ol","ak.proto","ak.quicv","ak.tlsv","ak.0rtt","ak.0rtt.ed","ak.r","ak.acc","ak.t","ak.tf"];BOOMR.removeVar(e)}};BOOMR.plugins.AK={akVars:i,akDNSPreFetchDomain:a,init:function(){if(!r.i){var e=BOOMR.subscribe;e("before_beacon",r.av,null,null),e("onbeacon",r.rv,null,null),r.i=!0}return this},is_complete:function(){return!0}}}}()}(window);</script></head>
+<body class="bg-gradient-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 from-amber-50/80 via-orange-50/40 to-amber-100/70 dark:text-slate-100 text-slate-800 font-sans min-h-screen relative overflow-x-hidden flex flex-col justify-between selection:bg-amber-600 selection:text-white transition-colors duration-300">
+
+    <!-- Flocons de neige animés -->
+    <div id="snow-container" class="fixed inset-0 overflow-hidden pointer-events-none z-0"></div>
+
+    <!-- Modale de Notification / Confirmation Personnalisée -->
+    <div id="custom-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden transition-opacity">
+        <div class="dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-200 max-w-md w-full rounded-3xl shadow-2xl p-6 dark:text-slate-100 text-slate-800 relative overflow-hidden transition-colors duration-300">
+            <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-amber-500 to-red-600"></div>
+            <div class="flex items-center gap-3 mb-3">
+                <div id="modal-icon" class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-500 dark:text-amber-400 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-gift"></i>
+                </div>
+                <h3 id="modal-title" class="text-xl font-bold font-christmas tracking-wide text-amber-500 dark:text-amber-400">Notification</h3>
+            </div>
+            <p id="modal-message" class="dark:text-slate-300 text-slate-600 text-sm mb-6 leading-relaxed">Message ici...</p>
+            <div id="modal-input-container" class="mb-6 hidden">
+                <label id="modal-input-label" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Valeur</label>
+                <input type="text" id="modal-input-field" class="w-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-700 border-slate-300 rounded-xl px-4 py-2.5 text-sm dark:text-white text-slate-800 focus:outline-none focus:border-amber-500">
+            </div>
+            <div class="flex items-center justify-end gap-3">
+                <button type="button" id="modal-btn-cancel" class="px-4 py-2 rounded-xl dark:bg-slate-800 bg-slate-200 dark:hover:bg-slate-700 hover:bg-slate-300 dark:text-slate-300 text-slate-700 text-sm font-semibold transition hidden">Annuler</button>
+                <button type="button" id="modal-btn-ok" class="px-5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white text-sm font-semibold shadow-lg transition">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER -->
+    <div class="relative z-10 flex flex-col min-h-screen">
+
+        <!-- ================= AUTH VIEW ================= -->
+        <div id="auth-view" class="flex-1 flex items-center justify-center p-3 sm:p-4 py-12">
+            <div class="dark:bg-slate-900/90 bg-white/95 backdrop-blur-xl max-w-md w-full rounded-3xl shadow-2xl p-6 sm:p-8 border dark:border-slate-700/80 border-slate-200 relative overflow-hidden card-glow transition-colors duration-300">
+                <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-amber-500 to-red-600"></div>
+                
+                <div class="text-center mb-6 sm:mb-8">
+                    <div class="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-red-600 to-amber-500 text-white text-2xl sm:text-3xl mb-3 sm:mb-4 shadow-lg">
+                        <i class="fa-solid fa-sleigh"></i>
+                    </div>
+                    <h1 class="font-christmas text-3xl sm:text-4xl font-bold text-amber-500 dark:text-amber-400 tracking-wide">Liste de Noël en famille</h1>
+                    <p class="text-xs dark:text-slate-400 text-slate-500 mt-1 uppercase tracking-wider font-semibold">Espace Sécurisé</p>
+                </div>
+
+                <!-- Tabs Connexion / Inscription -->
+                <div class="flex rounded-xl dark:bg-slate-800 bg-slate-100 p-1 mb-6 border dark:border-slate-700/60 border-slate-200">
+                    <button id="tab-login" type="button" class="flex-1 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all bg-gradient-to-r from-red-600 to-amber-600 text-white shadow">Connexion</button>
+                    <button id="tab-register" type="button" class="flex-1 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all dark:text-slate-400 text-slate-600 dark:hover:text-white hover:text-slate-900">Inscription</button>
+                </div>
+
+                <!-- Formulaire Connexion -->
+                <form id="form-login" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-1.5">Pseudo (identifiant)</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500"><i class="fa-solid fa-user"></i></span>
+                            <input type="text" id="login-pseudo" required class="w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl pl-10 pr-4 py-3 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500 transition" placeholder="Ex: maman, papa, julien...">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-1.5">Mot de passe</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500"><i class="fa-solid fa-lock"></i></span>
+                            <input type="password" id="login-password" required class="w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl pl-10 pr-4 py-3 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500 transition" placeholder="••••••••">
+                        </div>
+                    </div>
+                    
+                    <!-- Lien Mot de passe oublié -->
+                    <div class="flex justify-end pt-1">
+                        <button type="button" id="btn-forgot-password" class="text-xs text-amber-500 dark:text-amber-400 hover:underline font-semibold flex items-center gap-1">
+                            <i class="fa-solid fa-circle-question"></i> Mot de passe oublié ?
+                        </button>
+                    </div>
+
+                    <button type="submit" class="w-full py-3 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-semibold rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
+                        <span>Se connecter</span> <i class="fa-solid fa-gift"></i>
+                    </button>
+                </form>
+
+                <!-- Formulaire Inscription -->
+                <form id="form-register" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-1.5">Pseudo / Identifiant unique</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500"><i class="fa-solid fa-user-plus"></i></span>
+                            <input type="text" id="register-pseudo" required class="w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl pl-10 pr-4 py-3 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500 transition" placeholder="Ex: julien">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-1.5">Prénom affiché (dans la famille)</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500"><i class="fa-solid fa-signature"></i></span>
+                            <input type="text" id="register-display-name" required class="w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl pl-10 pr-4 py-3 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500 transition" placeholder="Ex: Julien">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-1.5">Mot de passe</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500"><i class="fa-solid fa-lock"></i></span>
+                            <input type="password" id="register-password" required class="w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl pl-10 pr-4 py-3 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500 transition" placeholder="••••••••">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-semibold rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
+                        <span>Créer mon compte</span> <i class="fa-solid fa-sparkles"></i>
+                    </button>
+                </form>
+
+                <div id="auth-loading" class="mt-4 text-center text-xs text-amber-500 dark:text-amber-400 hidden"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Connexion aux lutins Supabase en cours...</div>
+            </div>
+        </div>
+
+
+        <!-- ================= MAIN APP VIEW ================= -->
+        <div id="app-view" class="flex-1 flex flex-col hidden">
+            <!-- Header Sticky Condensé Mobile -->
+            <header class="dark:bg-slate-900/95 bg-white/95 backdrop-blur-md border-b dark:border-slate-800 border-slate-200 dark:text-white text-slate-800 sticky top-0 z-40 shadow-xl transition-colors duration-300">
+                <div class="max-w-6xl mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-4">
+                    <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <div class="max-[399px]:hidden w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-gradient-to-tr from-red-600 to-amber-500 flex items-center justify-center text-white text-base sm:text-xl shadow-md shrink-0">
+                            <i class="fa-solid fa-sleigh"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h1 class="font-christmas text-xl sm:text-2xl font-bold text-amber-500 dark:text-amber-400 tracking-wide leading-none truncate">Liste de Noël en famille</h1>
+                            <p class="text-[11px] sm:text-xs dark:text-slate-400 text-slate-500 mt-0.5 truncate">Bonjour <span id="current-user-display" class="font-semibold dark:text-white text-slate-800">...</span> 🎅</p>
+                        </div>
+                    </div>
+
+                    <!-- Décompte avant Noël (toujours visible pendant la navigation) -->
+                    <div id="header-countdown" title="Avant que le Père Noël arrive 🎅" class="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-500 dark:text-amber-400 shrink-0 tabular-nums whitespace-nowrap">
+                        <span class="text-sm sm:text-base leading-none">🎅</span>
+                        <div id="countdown-timer-box" class="flex items-baseline text-xs sm:text-sm font-bold">
+                            <span id="cd-days">00</span><span class="cd-unit">j</span>
+                            <span id="cd-hours" class="ml-1.5">00</span><span class="cd-unit">h</span>
+                            <span id="cd-minutes" class="ml-1.5">00</span><span class="cd-unit">m</span>
+                            <span id="cd-seconds" class="hidden sm:inline ml-1.5">00</span><span class="cd-unit hidden sm:inline">s</span>
+                        </div>
+                        <span id="countdown-ended-msg" class="hidden text-xs sm:text-sm font-bold">Joyeux Noël ! 🎄</span>
+                    </div>
+
+                    <!-- Actions Header (Theme Toggle & Logout) -->
+                    <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        <!-- Administration (enfants) -->
+                        <button type="button" id="btn-admin" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl dark:bg-slate-800 bg-slate-100 dark:hover:bg-slate-700 hover:bg-slate-200 dark:text-slate-300 text-slate-600 border dark:border-slate-700 border-slate-300 flex items-center justify-center text-sm transition shadow" title="Paramètres : familles et enfants" aria-label="Paramètres">
+                            <i class="fa-solid fa-gear"></i>
+                        </button>
+                        <!-- Bouton Toggle Jour/Nuit -->
+                        <button type="button" id="btn-theme-toggle" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl dark:bg-slate-800 bg-slate-100 dark:hover:bg-slate-700 hover:bg-slate-200 dark:text-amber-400 text-amber-600 border dark:border-slate-700 border-slate-300 flex items-center justify-center text-sm transition shadow" title="Basculer le mode jour/nuit">
+                            <i id="theme-icon" class="fa-solid fa-sun"></i>
+                        </button>
+                        <!-- Logout -->
+                        <button type="button" id="btn-logout" class="px-2.5 sm:px-4 py-2 rounded-xl dark:bg-slate-800 bg-slate-100 dark:hover:bg-red-900/40 hover:bg-red-100 dark:text-slate-300 text-slate-700 hover:text-red-400 dark:hover:text-red-300 hover:text-red-600 border dark:border-slate-700 border-slate-300 text-xs font-semibold transition flex items-center gap-1.5 shadow">
+                            <i class="fa-solid fa-right-from-bracket"></i> <span class="hidden sm:inline">Déconnexion</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content Container -->
+            <main class="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-4 md:p-6 pb-20 space-y-4 sm:space-y-6">
+
+                <!-- Bannière de bienvenue personnalisée -->
+                <div class="dark:bg-slate-900/80 bg-white/90 border dark:border-slate-800 border-slate-200 rounded-3xl p-4 sm:p-6 shadow-xl relative overflow-hidden card-glow transition-colors duration-300">
+                    <div class="absolute top-0 right-0 p-6 opacity-10 text-8xl text-amber-500 dark:text-amber-400 pointer-events-none font-christmas">🎄</div>
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 relative z-10">
+                        <div class="flex items-center gap-3 sm:gap-4">
+                            <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-500 dark:text-amber-400 flex items-center justify-center text-2xl sm:text-3xl shadow-inner shrink-0">
+                                🎁
+                            </div>
+                            <div>
+                                <h2 class="text-2xl sm:text-3xl font-bold font-christmas text-amber-500 dark:text-amber-400 tracking-wide" id="welcome-title">Joyeux Noël !</h2>
+                                <p class="text-xs dark:text-slate-400 text-slate-600 mt-0.5">Gérez vos listes, préparez les surprises et suivez vos achats en toute sérénité.</p>
+                            </div>
+                        </div>
+
+                        <!-- 3 Onglets Principaux compacts sur mobile, grille horizontale -->
+                        <div class="grid grid-cols-3 sm:flex sm:flex-wrap dark:bg-slate-800/90 bg-slate-100 rounded-2xl p-1.5 border dark:border-slate-700 border-slate-200 gap-1 sm:gap-0">
+                            <button type="button" id="nav-tab-mylist" class="px-2 sm:px-4 py-2 rounded-xl font-semibold text-[11px] sm:text-xs uppercase tracking-wider transition flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 bg-gradient-to-r from-red-600 to-amber-600 text-white shadow">
+                                <i class="fa-solid fa-gift"></i> <span class="truncate">Ma Liste</span>
+                            </button>
+                            <button type="button" id="nav-tab-family" class="px-2 sm:px-4 py-2 rounded-xl font-semibold text-[11px] sm:text-xs uppercase tracking-wider transition flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 dark:text-slate-400 text-slate-600 dark:hover:text-white hover:text-slate-900">
+                                <i class="fa-solid fa-users"></i> <span class="truncate">Famille</span>
+                            </button>
+                            <button type="button" id="nav-tab-reservations" class="px-2 sm:px-4 py-2 rounded-xl font-semibold text-[11px] sm:text-xs uppercase tracking-wider transition flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 dark:text-slate-400 text-slate-600 dark:hover:text-white hover:text-slate-900">
+                                <i class="fa-solid fa-bag-shopping"></i> <span class="truncate">Résas</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- ================= ONGLET A : MA LISTE DE NOEL ================= -->
+                <div id="tab-content-mylist" class="space-y-4 sm:space-y-6">
+                    
+                    <!-- Sélecteur de liste active (Moi ou un de mes enfants) & Bouton Ajouter un cadeau -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 dark:bg-slate-900/80 bg-white/90 border dark:border-slate-800 border-slate-200 p-4 sm:p-5 rounded-3xl shadow-xl transition-colors duration-300">
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                            <h2 id="mylist-title" class="font-christmas text-xl sm:text-2xl font-bold text-amber-500 dark:text-amber-400 tracking-wide">Ma liste de Noël 🎁</h2>
+                            <div id="active-list-selector-wrap" class="hidden flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                            <label class="text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600">Liste active :</label>
+                            <select id="active-list-selector" class="dark:bg-slate-800 bg-slate-100 border dark:border-slate-700 border-slate-300 dark:text-white text-slate-800 text-sm rounded-xl px-4 py-2.5 sm:py-2 focus:outline-none focus:border-amber-500 font-semibold w-full sm:w-auto">
+                                <option value="me">Ma propre liste</option>
+                                <!-- Enfants ajoutés dynamiquement -->
+                            </select>
+                            </div>
+                        </div>
+                        <button type="button" id="btn-open-add-gift" class="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm">
+                            <i class="fa-solid fa-plus"></i> Ajouter un cadeau
+                        </button>
+                    </div>
+
+                    <!-- Liste verticale empilée des cadeaux (Ma Liste / Enfant) -->
+                    <div id="my-gifts-container" class="dark:bg-slate-900/80 bg-white/90 border dark:border-slate-800 border-slate-200 rounded-3xl shadow-xl divide-y dark:divide-slate-800 divide-slate-200 overflow-hidden transition-colors duration-300">
+                        <!-- Rempli dynamiquement en format liste -->
+                    </div>
+                    <div id="my-gifts-empty" class="text-center py-16 sm:py-20 hidden">
+                        <div class="text-6xl mb-3">📭</div>
+                        <p class="dark:text-slate-300 text-slate-700 font-medium">Cette liste est vide pour l'instant.</p>
+                        <p class="text-xs text-slate-500 mt-1">Cliquez sur "Ajouter un cadeau" pour glisser vos premiers souhaits !</p>
+                    </div>
+                </div>
+
+
+                <!-- ================= ONGLET B : LISTES DE LA FAMILLE ================= -->
+                <div id="tab-content-family" class="space-y-4 sm:space-y-6 hidden">
+                    <div class="dark:bg-slate-900/80 bg-white/90 border dark:border-slate-800 border-slate-200 p-4 sm:p-6 rounded-3xl shadow-xl transition-colors duration-300">
+                        <h2 class="font-christmas text-2xl sm:text-3xl font-bold text-amber-500 dark:text-amber-400 tracking-wide">Listes de la Famille</h2>
+                        <p class="text-xs dark:text-slate-400 text-slate-600 mt-1">Sélectionnez un membre ou un enfant pour découvrir sa liste, réserver, participer à une cagnotte ou suggérer des idées.</p>
+                    </div>
+
+                    <!-- Pastilles cliquables défilantes des membres et enfants de la famille -->
+                    <div id="family-members-chips" class="flex overflow-x-auto pb-2 sm:flex-wrap gap-2.5 sm:gap-3">
+                        <!-- Rempli dynamiquement -->
+                    </div>
+
+                    <!-- Vue détaillée de la liste sélectionnée dans la famille -->
+                    <div id="family-selected-view" class="space-y-4 sm:space-y-6 hidden">
+                        <div class="dark:bg-slate-900/90 bg-white/95 border dark:border-slate-800 border-slate-200 p-4 sm:p-6 rounded-3xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors duration-300">
+                            <div>
+                                <span class="text-xs font-semibold uppercase tracking-wider text-amber-500 dark:text-amber-400">Liste de :</span>
+                                <h3 id="family-target-title" class="text-xl sm:text-2xl font-bold font-christmas dark:text-white text-slate-900">...</h3>
+                                <p id="family-target-spent" class="mt-1 text-xs dark:text-slate-400 text-slate-600"></p>
+                            </div>
+                            <div id="family-action-buttons-container" class="flex items-center gap-3">
+                                <!-- Rempli dynamiquement -->
+                            </div>
+                        </div>
+
+                        <!-- Liste verticale empilée des cadeaux de la famille -->
+                        <div id="family-gifts-grid" class="dark:bg-slate-900/80 bg-white/90 border dark:border-slate-800 border-slate-200 rounded-3xl shadow-xl divide-y dark:divide-slate-800 divide-slate-200 overflow-hidden transition-colors duration-300">
+                            <!-- Rempli dynamiquement en format liste -->
+                        </div>
+                    </div>
+
+                    <div id="family-members-empty" class="text-center py-16 sm:py-20 hidden">
+                        <div class="text-6xl mb-3">🏡</div>
+                        <p class="dark:text-slate-300 text-slate-700 font-medium">Aucun autre membre dans la famille pour le moment.</p>
+                        <p class="text-xs text-slate-500 mt-1">Invitez vos proches à créer un compte avec leur pseudo !</p>
+                    </div>
+                </div>
+
+
+                <!-- ================= ONGLET C : MES RESERVATIONS ================= -->
+                <div id="tab-content-reservations" class="space-y-4 sm:space-y-6 hidden">
+                    <div class="dark:bg-slate-900/80 bg-white/90 border dark:border-slate-800 border-slate-200 p-4 sm:p-6 rounded-3xl shadow-xl transition-colors duration-300">
+                        <h2 class="font-christmas text-2xl sm:text-3xl font-bold text-amber-500 dark:text-amber-400 tracking-wide">Mes Réservations & Participations</h2>
+                        <p class="text-xs dark:text-slate-400 text-slate-600 mt-1">Retrouvez ici tous les cadeaux que vous avez réservés ou auxquels vous participez en cagnotte.</p>
+                    </div>
+
+                    <!-- Résumé des dépenses -->
+                    <div id="spending-summary" class="dark:bg-slate-900/80 bg-white/90 border dark:border-slate-800 border-slate-200 p-4 sm:p-6 rounded-3xl shadow-xl transition-colors duration-300">
+                        <!-- Rempli dynamiquement -->
+                    </div>
+
+                    <!-- Liste verticale empilée des réservations personnelles -->
+                    <div id="my-reservations-container" class="dark:bg-slate-900/80 bg-white/90 border dark:border-slate-800 border-slate-200 rounded-3xl shadow-xl divide-y dark:divide-slate-800 divide-slate-200 overflow-hidden transition-colors duration-300">
+                        <!-- Rempli dynamiquement en format liste -->
+                    </div>
+                    <div id="my-reservations-empty" class="text-center py-16 sm:py-20 hidden">
+                        <div class="text-6xl mb-3">🎁</div>
+                        <p class="dark:text-slate-300 text-slate-700 font-medium">Vous n'avez encore réservé aucun cadeau ni participé à aucune cagnotte.</p>
+                        <p class="text-xs text-slate-500 mt-1">Explorez l'onglet "Famille" pour faire de belles surprises !</p>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+
+    </div><!-- Fin main app wrapper -->
+
+
+    <!-- ================= MODALS SPÉCIALISÉES ================= -->
+
+    <!-- Modal Ajout / Édition Cadeau / Suggestion -->
+    <div id="modal-gift" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden">
+        <div class="dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-200 max-w-lg w-full rounded-3xl shadow-2xl p-5 sm:p-6 relative overflow-hidden transition-colors duration-300 max-h-[90vh] overflow-y-auto">
+            <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-amber-500 to-red-600"></div>
+            <h3 id="modal-gift-title" class="font-christmas text-2xl font-bold text-amber-500 dark:text-amber-400 mb-4">Ajouter un cadeau</h3>
+            <form id="form-gift" class="space-y-4">
+                <input type="hidden" id="gift-id-input">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-1">Titre du cadeau *</label>
+                    <input type="text" id="gift-title" required class="w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-4 py-2.5 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500" placeholder="Ex: Livre de cuisine japonaise">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-1">Prix estimé (€)</label>
+                        <input type="number" step="0.01" id="gift-price" class="w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-4 py-2.5 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500" placeholder="Ex: 29.99">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-1">Priorité</label>
+                        <select id="gift-priority" class="w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-4 py-2.5 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500">
+                            <option value="1">🔥 Haute priorité</option>
+                            <option value="2" selected>⭐ Moyenne</option>
+                            <option value="3">🌱 Basse priorité</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-1">Lien vers le produit (URL)</label>
+                    <input type="url" id="gift-link" class="w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-4 py-2.5 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500" placeholder="https://...">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-1">Description / Précisions</label>
+                    <textarea id="gift-description" rows="3" class="w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-4 py-2.5 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500" placeholder="Taille M, couleur bleue si possible..."></textarea>
+                </div>
+
+                <!-- Changement 2 : Visibilité de la suggestion -->
+                <div id="gift-visibility-container" class="dark:bg-slate-800/60 bg-slate-100 p-4 rounded-2xl border dark:border-slate-700/60 border-slate-300 space-y-2 hidden">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-amber-500 dark:text-amber-400">Visibilité de la suggestion</label>
+                    <div class="flex items-start gap-3">
+                        <input type="checkbox" id="gift-visible-checkbox" class="mt-1 w-4 h-4 text-amber-600 rounded bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 focus:ring-amber-500">
+                        <div class="text-xs dark:text-slate-300 text-slate-700">
+                            <span id="visibility-label-text" class="font-semibold block dark:text-white text-slate-900">Garder secret (le destinataire ne verra jamais ce cadeau)</span>
+                            <span id="visibility-desc-text" class="dark:text-slate-400 text-slate-500">Par défaut : secret pour préserver la surprise. Cochez pour que le destinataire puisse voir cette suggestion dans sa liste.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-3 border-t dark:border-slate-800 border-slate-200">
+                    <button type="button" id="btn-close-modal-gift" class="px-4 py-2 rounded-xl dark:bg-slate-800 bg-slate-200 dark:hover:bg-slate-700 hover:bg-slate-300 dark:text-slate-300 text-slate-700 text-sm font-semibold transition">Annuler</button>
+                    <button type="submit" id="btn-submit-gift" class="px-5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-semibold text-sm transition shadow">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Achat Groupé / Cagnotte / Contribution Partielle -->
+    <div id="modal-participation" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden">
+        <div class="dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-200 max-w-md w-full rounded-3xl shadow-2xl p-5 sm:p-6 relative overflow-hidden transition-colors duration-300">
+            <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-amber-500 to-red-600"></div>
+            <h3 class="font-christmas text-2xl font-bold text-amber-500 dark:text-amber-400 mb-2">Participer à la Cagnotte</h3>
+            <p id="part-gift-name" class="text-sm font-semibold dark:text-slate-300 text-slate-700 mb-4"></p>
+            
+            <form id="form-participation" class="space-y-4">
+                <input type="hidden" id="part-gift-id">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-1">Votre contribution (€)</label>
+                    <input type="number" step="0.01" id="part-amount" required class="w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-4 py-2.5 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500" placeholder="Ex: 15.00">
+                    <p id="part-info-total" class="text-xs dark:text-slate-400 text-slate-500 mt-2 leading-relaxed"></p>
+                </div>
+                <div class="flex items-center justify-end gap-3 pt-3 border-t dark:border-slate-800 border-slate-200">
+                    <button type="button" id="btn-close-modal-part" class="px-4 py-2 rounded-xl dark:bg-slate-800 bg-slate-200 dark:hover:bg-slate-700 hover:bg-slate-300 dark:text-slate-300 text-slate-700 text-sm font-semibold transition">Annuler</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-semibold text-sm transition shadow">Confirmer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- ================= MODALE ADMINISTRATION (ENFANTS) ================= -->
+    <div id="modal-admin" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden">
+        <div class="dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-200 max-w-lg w-full rounded-3xl shadow-2xl p-5 sm:p-6 relative overflow-hidden transition-colors duration-300 max-h-[90vh] overflow-y-auto">
+            <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-amber-500 to-red-600"></div>
+            <div class="flex items-start justify-between gap-3 mb-1">
+                <h3 class="font-christmas text-2xl font-bold text-amber-500 dark:text-amber-400"><i class="fa-solid fa-gear mr-1.5"></i> Paramètres</h3>
+                <button type="button" id="btn-close-admin-x" class="text-slate-400 hover:text-red-400 transition p-1" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="flex gap-2 my-4">
+                <button type="button" id="tab-settings-families" class="flex-1 px-3 py-2 rounded-xl text-xs font-semibold transition"><i class="fa-solid fa-house-chimney-user mr-1"></i> Mes familles</button>
+                <button type="button" id="tab-settings-kids" class="flex-1 px-3 py-2 rounded-xl text-xs font-semibold transition"><i class="fa-solid fa-child mr-1"></i> Mes enfants</button>
+                <button type="button" id="tab-settings-admin" class="hidden flex-1 px-3 py-2 rounded-xl text-xs font-semibold transition"><i class="fa-solid fa-shield-halved mr-1"></i> Admin</button>
+            </div>
+
+            <!-- ===== Volet FAMILLES ===== -->
+            <div id="settings-pane-families">
+                <p class="text-xs dark:text-slate-400 text-slate-600 mb-4">Une famille regroupe les personnes qui partagent leurs listes. Vous pouvez en faire partie de plusieurs, et vous ne voyez que les membres de vos familles.</p>
+                <div id="families-notice" class="hidden mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs dark:text-amber-300 text-amber-800">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> Les familles ne sont pas encore activées sur la base de données. Exécutez la migration SQL fournie, puis rechargez la page.
+                </div>
+                <div id="families-list" class="space-y-3 mb-5"></div>
+
+                <div id="families-forms" class="space-y-4">
+                    <div>
+                        <h4 class="text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-2"><i class="fa-solid fa-plus text-amber-500 mr-1"></i> Créer une famille</h4>
+                        <form id="form-create-family" class="flex gap-2">
+                            <input type="text" id="create-family-name" required maxlength="40" class="flex-1 min-w-0 dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-4 py-2.5 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500" placeholder="Ex : Famille Martin">
+                            <button type="submit" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-semibold text-sm transition shadow shrink-0">Créer</button>
+                        </form>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-2"><i class="fa-solid fa-key text-amber-500 mr-1"></i> Rejoindre une famille</h4>
+                        <form id="form-join-family" class="flex gap-2">
+                            <input type="text" id="join-family-code" required maxlength="16" autocomplete="off" autocapitalize="characters" class="flex-1 min-w-0 dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-4 py-2.5 text-sm uppercase tracking-widest dark:text-white text-slate-900 focus:outline-none focus:border-amber-500" placeholder="Code d'invitation">
+                            <button type="submit" class="px-4 py-2.5 rounded-xl dark:bg-slate-800 bg-slate-200 dark:hover:bg-slate-700 hover:bg-slate-300 dark:text-amber-400 text-amber-700 font-semibold text-sm transition border dark:border-slate-700 border-slate-300 shrink-0">Rejoindre</button>
+                        </form>
+                        <p class="text-[11px] dark:text-slate-400 text-slate-500 mt-1.5">Demandez le code à un membre de la famille que vous souhaitez rejoindre.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== Volet ADMIN (réservé aux profils is_admin) ===== -->
+            <div id="settings-pane-admin" class="hidden">
+                <p class="text-xs dark:text-slate-400 text-slate-600 mb-4"><i class="fa-solid fa-shield-halved text-amber-500 mr-1"></i> Espace administrateur : visualisez toutes les familles, ajoutez ou retirez des membres, créez ou supprimez des familles.</p>
+                <div id="family-admin-list" class="space-y-3 mb-5"></div>
+
+                <h4 class="text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-2"><i class="fa-solid fa-plus text-amber-500 mr-1"></i> Ajouter une famille</h4>
+                <form id="form-admin-create-family" class="flex gap-2">
+                    <input type="text" id="admin-create-family-name" required maxlength="40" class="flex-1 min-w-0 dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-4 py-2.5 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500" placeholder="Nom de la nouvelle famille">
+                    <button type="submit" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-semibold text-sm transition shadow shrink-0">Créer</button>
+                </form>
+            </div>
+
+            <!-- ===== Volet ENFANTS ===== -->
+            <div id="settings-pane-kids" class="hidden">
+            <p class="text-xs dark:text-slate-400 text-slate-600 mb-4">Gérez les enfants rattachés à votre compte. Un enfant peut avoir deux parents : tous deux voient et gèrent sa liste.</p>
+            <h4 class="text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-2"><i class="fa-solid fa-child text-amber-500 mr-1"></i> Mes enfants</h4>
+            <div id="admin-kids-list" class="space-y-2 mb-5"></div>
+
+            <h4 class="text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-2"><i class="fa-solid fa-plus text-amber-500 mr-1"></i> Ajouter un enfant</h4>
+            <form id="form-admin-add-kid" class="space-y-3 rounded-2xl border dark:border-slate-700/60 border-slate-200 dark:bg-slate-800/40 bg-slate-50 p-3">
+                <div>
+                    <label class="block text-xs font-semibold dark:text-slate-300 text-slate-700 mb-1" for="admin-kid-name">Prénom</label>
+                    <input type="text" id="admin-kid-name" required maxlength="40" class="w-full dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-4 py-2.5 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500" placeholder="Prénom de l'enfant">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold dark:text-slate-300 text-slate-700 mb-1" for="admin-kid-parent2">Autre parent (facultatif)</label>
+                    <select id="admin-kid-parent2" class="w-full dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-4 py-2.5 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500"></select>
+                </div>
+                <button type="submit" class="w-full px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-semibold text-sm transition shadow flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Ajouter l'enfant
+                </button>
+            </form>
+            </div>
+
+            <div class="flex justify-end pt-4 mt-4 border-t dark:border-slate-800 border-slate-200">
+                <button type="button" id="btn-close-admin" class="px-4 py-2 rounded-xl dark:bg-slate-800 bg-slate-200 dark:hover:bg-slate-700 hover:bg-slate-300 dark:text-slate-300 text-slate-700 text-sm font-semibold transition">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= JAVASCRIPT APPLICATION ================= -->
+    <script>
+        // Identifiants Supabase fixes demandés
+        const SUPABASE_URL = 'https://ozzsinjcwarpniytvqth.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_iRPcoHmlzKlUxSrml8HRAw_Zq0i72B1';
+
+        // Initialisation Supabase JS v2
+        const { createClient } = supabase;
+        const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // État global
+        let currentUser = null;
+        let currentProfile = null;
+        let profilesCache = {}; // id -> profile record
+        let kidsCache = []; // liste des enfants de l'utilisateur connecté (parent 1 ou parent 2)
+        let allKidsCache = {}; // kid_id -> kid record (all family kids)
+        let myGiftsCache = []; // cadeaux de la liste active (moi ou l'enfant sélectionné)
+        let familyGiftsCache = {}; // owner_id / kid_id -> gifts array
+        let reservationsCache = {}; // gift_id -> reservation object with participants
+        let commentsCache = {}; // gift_id -> tableau de commentaires (ordre chronologique)
+        const openCommentPanels = new Set(); // cadeaux dont le fil de commentaires est ouvert
+        const commentDrafts = {}; // gift_id -> brouillon en cours de saisie
+        let focusCommentGiftId = null; // champ à re-focaliser après un rendu
+        let activeListOwnerId = null; // null si 'me', ou id de l'enfant
+        let selectedFamilyTarget = null; // { type: 'profile'|'kid', id: string, name: string }
+        let currentRealtimeChannel = null; // Référence globale au canal Realtime actif
+        let familiesAvailable = true; // false tant que la migration SQL « familles » n'est pas faite
+        let familiesCache = []; // familles dont je fais partie
+        let familyMembersMap = {}; // family_id -> [user_id]
+        let visibleUserIds = null; // Set des membres visibles (moi + membres de mes familles), null = pas de filtre
+
+
+        // ================= COMPTEUR DE NOËL (AJOUT V11) =================
+        function initChristmasCountdown() {
+            const updateCountdown = () => {
+                const now = new Date();
+                const currentYear = now.getFullYear();
+                
+                // Cible : 25 décembre de l'année en cours à 00:00:00
+                let christmasDate = new Date(currentYear, 11, 25, 0, 0, 0);
+
+                const diff = christmasDate.getTime() - now.getTime();
+
+                const timerBoxEl = document.getElementById('countdown-timer-box');
+                const endedMsgEl = document.getElementById('countdown-ended-msg');
+
+                if (diff <= 0) {
+                    // Si on est après le 25 décembre de cette année
+                    if (timerBoxEl) timerBoxEl.classList.add('hidden');
+                    if (endedMsgEl) {
+                        endedMsgEl.classList.remove('hidden');
+                        endedMsgEl.textContent = "Joyeux Noël ! 🎄";
+                    }
+                    return;
+                }
+
+                if (endedMsgEl) endedMsgEl.classList.add('hidden');
+                if (timerBoxEl) timerBoxEl.classList.remove('hidden');
+
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+                const daysEl = document.getElementById('cd-days');
+                const hoursEl = document.getElementById('cd-hours');
+                const minutesEl = document.getElementById('cd-minutes');
+                const secondsEl = document.getElementById('cd-seconds');
+
+                if (daysEl) daysEl.textContent = String(days).padStart(2, '0');
+                if (hoursEl) hoursEl.textContent = String(hours).padStart(2, '0');
+                if (minutesEl) minutesEl.textContent = String(minutes).padStart(2, '0');
+                if (secondsEl) secondsEl.textContent = String(seconds).padStart(2, '0');
+            };
+
+            updateCountdown();
+            setInterval(updateCountdown, 1000);
+        }
+
+
+        // ================= CHANGEMENT 1 : FONCTION D'AFFICHAGE DE PRIX DÉDIÉE =================
+        function formatPriceHTML(amount) {
+            if (amount === null || amount === undefined || isNaN(amount)) return '';
+            const num = parseFloat(amount);
+            const parts = num.toFixed(2).split('.');
+            const integerPart = parts[0];
+            const decimalPart = parts[1];
+
+            return `
+                <span class="price-display text-amber-500 dark:text-amber-400 font-bold">
+                    <span class="price-integer">${integerPart}</span><span class="price-comma">,</span><span class="price-decimal">${decimalPart}</span><span class="price-currency">&nbsp;€</span>
+                </span>
+            `;
+        }
+
+
+        // ================= CHANGEMENT 3 : THÈMES & LOCALSTORAGE (DÉFAUT SOMBRE) =================
+        function initTheme() {
+            const savedTheme = localStorage.getItem('family_christmas_theme');
+            
+            if (savedTheme) {
+                // Si un choix a déjà été enregistré dans le localStorage
+                setTheme(savedTheme === 'dark');
+            } else {
+                // PREMIER CHARGEMENT (aucune préférence enregistrée) : TOUJOURS LE THÈME SOMBRE
+                setTheme(true);
+            }
+        }
+
+        function setTheme(isDark) {
+            const htmlEl = document.documentElement;
+            const themeIcon = document.getElementById('theme-icon');
+
+            if (isDark) {
+                htmlEl.classList.add('dark');
+                localStorage.setItem('family_christmas_theme', 'dark');
+                if (themeIcon) {
+                    themeIcon.className = 'fa-solid fa-sun';
+                }
+            } else {
+                htmlEl.classList.remove('dark');
+                localStorage.setItem('family_christmas_theme', 'light');
+                if (themeIcon) {
+                    themeIcon.className = 'fa-solid fa-moon';
+                }
+            }
+        }
+
+        document.getElementById('btn-theme-toggle').addEventListener('click', () => {
+            const isCurrentlyDark = document.documentElement.classList.contains('dark');
+            setTheme(!isCurrentlyDark);
+        });
+
+
+        // ================= GESTION DES FLOCONS DE NEIGE =================
+        function initSnow() {
+            const container = document.getElementById('snow-container');
+            const flakeCount = 28;
+            for (let i = 0; i < flakeCount; i++) {
+                const flake = document.createElement('div');
+                flake.className = 'snowflake';
+                flake.innerHTML = ['❄', '❅', '❆', '✨'][Math.floor(Math.random() * 4)];
+                flake.style.left = `${Math.random() * 94}%`;
+                flake.style.animationDuration = `${Math.random() * 10 + 6}s`;
+                flake.style.animationDelay = `${Math.random() * 5}s`;
+                flake.style.fontSize = `${Math.random() * 10 + 10}px`;
+                flake.style.opacity = Math.random() * 0.7 + 0.3;
+                container.appendChild(flake);
+            }
+        }
+
+        // ================= MODALE PERSONNALISÉE (REMPLACE ALERT/CONFIRM) =================
+        function showCustomModal(title, message, options = {}) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('custom-modal');
+                const titleEl = document.getElementById('modal-title');
+                const msgEl = document.getElementById('modal-message');
+                const btnOk = document.getElementById('modal-btn-ok');
+                const btnCancel = document.getElementById('modal-btn-cancel');
+                const inputContainer = document.getElementById('modal-input-container');
+                const inputLabel = document.getElementById('modal-input-label');
+                const inputField = document.getElementById('modal-input-field');
+
+                titleEl.textContent = title;
+                msgEl.textContent = message;
+                inputContainer.classList.add('hidden');
+                btnCancel.classList.add('hidden');
+
+                if (options.isPrompt) {
+                    inputContainer.classList.remove('hidden');
+                    inputLabel.textContent = options.inputLabel || 'Valeur';
+                    inputField.value = options.defaultValue || '';
+                    setTimeout(() => inputField.focus(), 50);
+                }
+
+                if (options.isConfirm || options.isPrompt) {
+                    btnCancel.classList.remove('hidden');
+                }
+
+                const cleanup = () => {
+                    btnOk.onclick = null;
+                    btnCancel.onclick = null;
+                    modal.classList.add('hidden');
+                };
+
+                btnOk.onclick = () => {
+                    const val = options.isPrompt ? inputField.value : true;
+                    cleanup();
+                    resolve(val);
+                };
+
+                btnCancel.onclick = () => {
+                    cleanup();
+                    resolve(options.isPrompt ? null : false);
+                };
+
+                modal.classList.remove('hidden');
+            });
+        }
+
+        function showAlert(title, message) {
+            return showCustomModal(title, message, { isConfirm: false });
+        }
+
+        function showConfirm(title, message) {
+            return showCustomModal(title, message, { isConfirm: true });
+        }
+
+        function showPrompt(title, message, inputLabel = 'Valeur', defaultValue = '') {
+            return showCustomModal(title, message, { isPrompt: true, inputLabel, defaultValue });
+        }
+
+
+        // ================= AUTHENTIFICATION & SESSION =================
+        async function initAuth() {
+            try {
+                const { data: { session }, error } = await sb.auth.getSession();
+                if (error) throw error;
+                if (session) {
+                    currentUser = session.user;
+                    await loadProfileAndEnterApp();
+                } else {
+                    showAuthView();
+                }
+            } catch (err) {
+                console.error("Erreur de session:", err);
+                showAuthView();
+            }
+        }
+
+        async function loadProfileAndEnterApp() {
+            try {
+                const { data, error } = await sb
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', currentUser.id)
+                    .single();
+
+                if (error) throw error;
+                currentProfile = data;
+
+                document.getElementById('current-user-display').textContent = currentProfile.display_name;
+                document.getElementById('welcome-title').textContent = `Joyeux Noël, ${currentProfile.display_name} ! 🎄`;
+                document.getElementById('auth-view').classList.add('hidden');
+                document.getElementById('app-view').classList.remove('hidden');
+
+                // Mettre à jour le budget global affiché
+                updateBudgetDisplay();
+
+                // Charger toutes les données et écouter le Realtime
+                await refreshAllData();
+                setupRealtimeSubscriptions();
+
+            } catch (err) {
+                console.error("Erreur chargement profil:", err);
+                await sb.auth.signOut();
+                showAuthView();
+            }
+        }
+
+        function showAuthView() {
+            if (currentRealtimeChannel) {
+                sb.removeChannel(currentRealtimeChannel);
+                currentRealtimeChannel = null;
+            }
+            document.getElementById('auth-view').classList.remove('hidden');
+            document.getElementById('app-view').classList.add('hidden');
+            currentUser = null;
+            currentProfile = null;
+        }
+
+        // Tabs Auth Connexion / Inscription
+        document.getElementById('tab-login').addEventListener('click', () => {
+            document.getElementById('tab-login').className = 'flex-1 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all bg-gradient-to-r from-red-600 to-amber-600 text-white shadow';
+            document.getElementById('tab-register').className = 'flex-1 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all dark:text-slate-400 text-slate-600 dark:hover:text-white hover:text-slate-900';
+            document.getElementById('form-login').classList.remove('hidden');
+            document.getElementById('form-register').classList.add('hidden');
+        });
+
+        document.getElementById('tab-register').addEventListener('click', () => {
+            document.getElementById('tab-register').className = 'flex-1 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all bg-gradient-to-r from-red-600 to-amber-600 text-white shadow';
+            document.getElementById('tab-login').className = 'flex-1 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all dark:text-slate-400 text-slate-600 dark:hover:text-white hover:text-slate-900';
+            document.getElementById('form-register').classList.remove('hidden');
+            document.getElementById('form-login').classList.add('hidden');
+        });
+
+        // 2. MOT DE PASSE OUBLIÉ - Modale informative
+        document.getElementById('btn-forgot-password').addEventListener('click', () => {
+            showAlert(
+                "Mot de passe oublié ?",
+                "Pour des raisons de sécurité, la réinitialisation se fait par l'administrateur familial. Contactez-le directement (téléphone, message) en lui communiquant votre identifiant. Il pourra réinitialiser votre mot de passe depuis l'interface d'administration."
+            );
+        });
+
+        // Connexion
+        document.getElementById('form-login').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const pseudo = document.getElementById('login-pseudo').value.trim().toLowerCase();
+            const password = document.getElementById('login-password').value;
+            const cleanPseudo = pseudo.replace(/[^a-z0-9]/g, '');
+            const email = `${cleanPseudo}@gmail.com`;
+            
+            document.getElementById('auth-loading').classList.remove('hidden');
+
+            try {
+                const { data, error } = await sb.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                currentUser = data.user;
+                await loadProfileAndEnterApp();
+            } catch (err) {
+                showAlert("Connexion impossible", "Pseudo ou mot de passe incorrect.");
+            } finally {
+                document.getElementById('auth-loading').classList.add('hidden');
+            }
+        });
+
+        // Inscription
+        document.getElementById('form-register').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const pseudo = document.getElementById('register-pseudo').value.trim().toLowerCase();
+            const displayName = document.getElementById('register-display-name').value.trim();
+            const password = document.getElementById('register-password').value;
+            const cleanPseudo = pseudo.replace(/[^a-z0-9]/g, '');
+            const email = `${cleanPseudo}@gmail.com`;
+
+            if (password.length < 6) {
+                showAlert("Mot de passe trop court", "Le mot de passe doit contenir au moins 6 caractères.");
+                return;
+            }
+
+            document.getElementById('auth-loading').classList.add('hidden');
+
+            try {
+                const { data: authData, error: authError } = await sb.auth.signUp({ email, password });
+                if (authError) {
+                    if (authError.message.includes('already registered')) {
+                        throw new Error("Ce pseudo existe déjà. Veuillez en choisir un autre.");
+                    }
+                    throw authError;
+                }
+
+                const userId = authData.user.id;
+
+                const { error: profileError } = await sb.from('profiles').insert({
+                    id: userId,
+                    display_name: displayName || pseudo,
+                    budget_limit: 150.00
+                });
+
+                if (profileError) throw profileError;
+
+                currentUser = authData.user;
+                await loadProfileAndEnterApp();
+            } catch (err) {
+                showAlert("Erreur d'inscription", err.message || "Une erreur est survenue lors de la création du compte.");
+            } finally {
+                document.getElementById('auth-loading').classList.add('hidden');
+            }
+        });
+
+        // Déconnexion
+        document.getElementById('btn-logout').addEventListener('click', async () => {
+            await sb.auth.signOut();
+            showAuthView();
+        });
+
+
+        // ================= NAVIGATION ENTRE LES 3 ONGLETS =================
+        const navTabMylist = document.getElementById('nav-tab-mylist');
+        const navTabFamily = document.getElementById('nav-tab-family');
+        const navTabReservations = document.getElementById('nav-tab-reservations');
+        const tabContentMylist = document.getElementById('tab-content-mylist');
+        const tabContentFamily = document.getElementById('tab-content-family');
+        const tabContentReservations = document.getElementById('tab-content-reservations');
+
+        function switchTab(activeTab) {
+            [navTabMylist, navTabFamily, navTabReservations].forEach(t => {
+                t.className = 'px-2 sm:px-4 py-2 rounded-xl font-semibold text-[11px] sm:text-xs uppercase tracking-wider transition flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 dark:text-slate-400 text-slate-600 dark:hover:text-white hover:text-slate-900';
+            });
+            [tabContentMylist, tabContentFamily, tabContentReservations].forEach(c => c.classList.add('hidden'));
+
+            if (activeTab === 'mylist') {
+                navTabMylist.className = 'px-2 sm:px-4 py-2 rounded-xl font-semibold text-[11px] sm:text-xs uppercase tracking-wider transition flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 bg-gradient-to-r from-red-600 to-amber-600 text-white shadow';
+                tabContentMylist.classList.remove('hidden');
+            } else if (activeTab === 'family') {
+                navTabFamily.className = 'px-2 sm:px-4 py-2 rounded-xl font-semibold text-[11px] sm:text-xs uppercase tracking-wider transition flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 bg-gradient-to-r from-red-600 to-amber-600 text-white shadow';
+                tabContentFamily.classList.remove('hidden');
+            } else if (activeTab === 'reservations') {
+                navTabReservations.className = 'px-2 sm:px-4 py-2 rounded-xl font-semibold text-[11px] sm:text-xs uppercase tracking-wider transition flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 bg-gradient-to-r from-red-600 to-amber-600 text-white shadow';
+                tabContentReservations.classList.remove('hidden');
+                renderMyReservations();
+            }
+        }
+
+        navTabMylist.addEventListener('click', () => switchTab('mylist'));
+        navTabFamily.addEventListener('click', () => switchTab('family'));
+        navTabReservations.addEventListener('click', () => switchTab('reservations'));
+
+
+        // ================= CHARGEMENT & SYNCHRONISATION DONNÉES =================
+        async function refreshAllData() {
+            if (!currentUser) return;
+            try {
+                // 0. Familles (détermine les membres visibles)
+                await loadFamilies();
+
+                // 1. Profils (limités aux membres de mes familles)
+                const { data: profiles, error: pError } = await sb.from('profiles').select('*');
+                if (pError) throw pError;
+                profilesCache = {};
+                profiles.forEach(p => {
+                    if (!visibleUserIds || visibleUserIds.has(p.id)) profilesCache[p.id] = p;
+                });
+                if (profilesCache[currentUser.id]) {
+                    currentProfile = profilesCache[currentUser.id];
+                    updateBudgetDisplay();
+                }
+
+                // 2. Enfants
+                const { data: kids, error: kError } = await sb.from('kids').select('*');
+                if (kError) throw kError;
+                // Enfants visibles : les miens + ceux dont un parent fait partie de mes familles
+                const visibleKids = kids.filter(k => !visibleUserIds || isKidParent(k, currentUser.id)
+                    || visibleUserIds.has(k.parent_id) || (k.parent2_id && visibleUserIds.has(k.parent2_id)));
+                kidsCache = visibleKids.filter(k => isKidParent(k, currentUser.id));
+                if (activeListOwnerId && !kidsCache.some(k => k.id === activeListOwnerId)) activeListOwnerId = null;
+                allKidsCache = {};
+                visibleKids.forEach(k => { allKidsCache[k.id] = k; });
+
+                // 3. Cadeaux
+                const { data: gifts, error: gError } = await sb.from('gifts').select('*').order('priority', { ascending: true });
+                if (gError) throw gError;
+
+                updateMyGiftsCache(gifts);
+
+                familyGiftsCache = {};
+                gifts.forEach(g => {
+                    if (g.owner_id) {
+                        if (g.owner_id !== currentUser.id && profilesCache[g.owner_id]) {
+                            if (!familyGiftsCache[g.owner_id]) familyGiftsCache[g.owner_id] = [];
+                            familyGiftsCache[g.owner_id].push(g);
+                        }
+                    } else if (g.owner_kid_id) {
+                        const kidObj = allKidsCache[g.owner_kid_id];
+                        if (kidObj) {
+                            if (!familyGiftsCache[g.owner_kid_id]) familyGiftsCache[g.owner_kid_id] = [];
+                            familyGiftsCache[g.owner_kid_id].push(g);
+                        }
+                    }
+                });
+
+                // 4. Réservations
+                const { data: reservations, error: rError } = await sb.from('reservations').select('*, reservation_participants(*)');
+                if (rError) throw rError;
+
+                reservationsCache = {};
+                if (reservations) {
+                    reservations.forEach(r => {
+                        reservationsCache[r.gift_id] = r;
+                    });
+                }
+
+                // 5. Commentaires (ne bloque pas le reste si la table est inaccessible)
+                await loadComments();
+
+                // Rendu des vues
+                renderSpending();
+                renderSettings();
+                renderActiveListSelector();
+                renderMyGifts();
+                renderFamilyMembersChips();
+                if (selectedFamilyTarget) {
+                    renderFamilySelectedView();
+                }
+                if (!tabContentReservations.classList.contains('hidden')) {
+                    renderMyReservations();
+                }
+
+            } catch (err) {
+                console.error("Erreur de synchronisation:", err);
+            }
+        }
+
+        // ================= GESTION REALTIME SUPABASE =================
+        function setupRealtimeSubscriptions() {
+            if (currentRealtimeChannel) {
+                sb.removeChannel(currentRealtimeChannel);
+                currentRealtimeChannel = null;
+            }
+
+            const uniqueChannelName = `public-db-changes-${currentUser ? currentUser.id : 'anon'}-${Date.now()}`;
+            currentRealtimeChannel = sb.channel(uniqueChannelName);
+
+            currentRealtimeChannel
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+                    refreshAllData();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'kids' }, () => {
+                    refreshAllData();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'gifts' }, () => {
+                    refreshAllData();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, () => {
+                    refreshAllData();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'reservation_participants' }, () => {
+                    refreshAllData();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'families' }, () => {
+                    refreshAllData();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'family_members' }, () => {
+                    refreshAllData();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'gift_comments' }, async () => {
+                    await loadComments();
+                    if (selectedFamilyTarget) renderFamilySelectedView();
+                })
+                .subscribe((status, err) => {
+                    if (err) {
+                        console.error("Erreur Realtime channel:", err);
+                    }
+                });
+        }
+
+        // ================= FAMILLES =================
+        async function loadFamilies() {
+            try {
+                const [famRes, memRes] = await Promise.all([
+                    sb.from('families').select('*'),
+                    sb.from('family_members').select('*')
+                ]);
+                if (famRes.error) throw famRes.error;
+                if (memRes.error) throw memRes.error;
+
+                const myIds = new Set(memRes.data.filter(m => m.user_id === currentUser.id).map(m => m.family_id));
+                familiesCache = famRes.data
+                    .filter(f => myIds.has(f.id))
+                    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr'));
+
+                familyMembersMap = {};
+                memRes.data.forEach(m => {
+                    if (!myIds.has(m.family_id)) return;
+                    if (!familyMembersMap[m.family_id]) familyMembersMap[m.family_id] = [];
+                    familyMembersMap[m.family_id].push(m.user_id);
+                });
+
+                // Chaque membre ne voit que les membres de ses familles
+                visibleUserIds = new Set([currentUser.id]);
+                Object.values(familyMembersMap).forEach(list => list.forEach(uid => visibleUserIds.add(uid)));
+                familiesAvailable = true;
+            } catch (err) {
+                console.warn('Familles indisponibles (migration SQL non faite ?) :', err);
+                familiesAvailable = false;
+                familiesCache = [];
+                familyMembersMap = {};
+                visibleUserIds = null;
+            }
+        }
+
+        // ================= ENFANTS : 1 ou 2 parents =================
+        function isKidParent(kid, uid) {
+            return !!kid && !!uid && (kid.parent_id === uid || kid.parent2_id === uid);
+        }
+
+        function kidParentNames(kid) {
+            return [kid.parent_id, kid.parent2_id]
+                .filter(Boolean)
+                .map(id => profilesCache[id] ? profilesCache[id].display_name : null)
+                .filter(Boolean)
+                .join(' & ');
+        }
+
+        // ================= COMMENTAIRES =================
+        async function loadComments() {
+            try {
+                const { data, error } = await sb.from('gift_comments').select('*').order('created_at', { ascending: true });
+                if (error) throw error;
+                commentsCache = {};
+                (data || []).forEach(c => {
+                    if (!commentsCache[c.gift_id]) commentsCache[c.gift_id] = [];
+                    commentsCache[c.gift_id].push(c);
+                });
+            } catch (err) {
+                console.warn('Commentaires indisponibles :', err);
+                commentsCache = {};
+            }
+        }
+
+        // Le destinataire du cadeau (ou le parent de l'enfant) ne doit pas voir les commentaires : c'est une surprise
+        function canSeeComments(gift) {
+            if (gift.owner_id && gift.owner_id === currentUser.id) return false;
+            if (gift.owner_kid_id) {
+                const kid = allKidsCache[gift.owner_kid_id];
+                if (isKidParent(kid, currentUser.id)) return false;
+            }
+            return true;
+        }
+
+        function formatCommentDate(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            const diff = (Date.now() - d.getTime()) / 60000;
+            if (diff < 1) return "à l'instant";
+            if (diff < 60) return `il y a ${Math.floor(diff)} min`;
+            if (diff < 60 * 24) return `il y a ${Math.floor(diff / 60)} h`;
+            return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function buildCommentsPanel(gift) {
+            const list = commentsCache[gift.id] || [];
+            const itemsHtml = list.length === 0
+                ? `<p class="gc-empty">Aucun commentaire pour l'instant. Partagez une idée, une taille, un bon plan… 💡</p>`
+                : list.map(c => {
+                    const mine = c.user_id === currentUser.id;
+                    const name = mine ? 'Vous' : (profilesCache[c.user_id] ? profilesCache[c.user_id].display_name : 'Membre');
+                    const canDelete = mine || (currentProfile && currentProfile.is_admin);
+                    return `
+                        <div class="gc-item ${mine ? 'is-mine' : ''}">
+                            <div class="gc-avatar">${escapeHtml(name.charAt(0).toUpperCase())}</div>
+                            <div class="gc-bubble">
+                                <div class="gc-head">
+                                    <span class="gc-name">${escapeHtml(name)}</span>
+                                    <span class="gc-date">${formatCommentDate(c.created_at)}</span>
+                                    ${canDelete ? `<button type="button" class="btn-delete-comment gc-del" data-comment-id="${c.id}" title="Supprimer"><i class="fa-solid fa-xmark"></i></button>` : ''}
+                                </div>
+                                <p class="gc-text">${escapeHtml(c.message)}</p>
+                            </div>
+                        </div>`;
+                }).join('');
+
+            return `
+                <div class="gcomments" data-gift-id="${gift.id}">
+                    ${itemsHtml}
+                    <div class="gc-form">
+                        <textarea class="gc-input" rows="1" maxlength="500" placeholder="Écrire un commentaire…" data-gift-id="${gift.id}">${escapeHtml(commentDrafts[gift.id] || '')}</textarea>
+                        <button type="button" class="btn-send-comment gc-send" data-gift-id="${gift.id}" title="Envoyer"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                    <p class="gc-note"><i class="fa-solid fa-user-secret"></i> Ces commentaires sont masqués pour la personne qui recevra le cadeau.</p>
+                </div>`;
+        }
+
+        async function sendComment(giftId) {
+            const input = document.querySelector(`.gc-input[data-gift-id="${giftId}"]`);
+            if (!input) return;
+            const message = input.value.trim();
+            if (!message) return;
+            input.disabled = true;
+            try {
+                const { data, error } = await sb.from('gift_comments')
+                    .insert({ gift_id: giftId, user_id: currentUser.id, message })
+                    .select().single();
+                if (error) throw error;
+                if (!commentsCache[giftId]) commentsCache[giftId] = [];
+                if (!commentsCache[giftId].some(c => c.id === data.id)) commentsCache[giftId].push(data);
+                delete commentDrafts[giftId];
+                focusCommentGiftId = giftId;
+                renderFamilySelectedView();
+            } catch (err) {
+                console.error(err);
+                input.disabled = false;
+                showAlert("Erreur", "Impossible d'envoyer le commentaire.");
+            }
+        }
+
+        async function deleteComment(commentId, giftId) {
+            const ok = await showConfirm("Supprimer le commentaire", "Voulez-vous vraiment supprimer ce commentaire ?");
+            if (!ok) return;
+            try {
+                const { error } = await sb.from('gift_comments').delete().eq('id', commentId);
+                if (error) throw error;
+                commentsCache[giftId] = (commentsCache[giftId] || []).filter(c => c.id !== commentId);
+                renderFamilySelectedView();
+            } catch (err) {
+                console.error(err);
+                showAlert("Erreur", "Impossible de supprimer le commentaire.");
+            }
+        }
+
+        // Ferme les menus « ⋯ » ouverts quand on clique ailleurs
+        document.addEventListener('click', (e) => {
+            document.querySelectorAll('details.gmenu[open]').forEach(d => { if (!d.contains(e.target)) d.removeAttribute('open'); });
+        });
+
+        // ================= DÉPENSES =================
+        function formatEuro(n) {
+            return (parseFloat(n) || 0).toFixed(2).replace('.', ',') + '\u00a0€';
+        }
+
+        function getTargetName(tid) {
+            if (profilesCache[tid]) return profilesCache[tid].display_name;
+            const kid = allKidsCache[tid];
+            if (kid) {
+                const pName = kidParentNames(kid);
+                return pName ? `${kid.name} (${pName})` : kid.name;
+            }
+            return 'Inconnu';
+        }
+
+        // Somme de mes parts dans les réservations / cagnottes, au total et par destinataire
+        function computeMySpending() {
+            const giftTarget = {};
+            Object.entries(familyGiftsCache).forEach(([tid, list]) => {
+                list.forEach(g => { giftTarget[g.id] = tid; });
+            });
+
+            const out = { total: 0, bought: 0, pending: 0, count: 0, byTarget: {} };
+            if (!currentUser) return out;
+
+            Object.values(reservationsCache).forEach(r => {
+                const part = (r.reservation_participants || []).find(p => p.user_id === currentUser.id);
+                if (!part) return;
+                const tid = giftTarget[r.gift_id];
+                if (!tid) return;
+                const share = parseFloat(part.share) || 0;
+                const isBought = r.status === 'bought' || r.status === 'wrapped';
+
+                out.total += share;
+                out.count += 1;
+                if (isBought) out.bought += share; else out.pending += share;
+
+                if (!out.byTarget[tid]) out.byTarget[tid] = { id: tid, name: getTargetName(tid), total: 0, bought: 0, count: 0 };
+                out.byTarget[tid].total += share;
+                out.byTarget[tid].count += 1;
+                if (isBought) out.byTarget[tid].bought += share;
+            });
+            return out;
+        }
+
+        function renderSpending() {
+            if (!currentUser) return;
+            const sp = computeMySpending();
+            const budget = currentProfile && currentProfile.budget_limit ? parseFloat(currentProfile.budget_limit) : 0;
+
+            // --- Résumé dans l'onglet Réservations ---
+            const box = document.getElementById('spending-summary');
+            if (box) {
+                const rows = Object.values(sp.byTarget).sort((a, b) => b.total - a.total);
+                const rowsHtml = rows.length === 0
+                    ? `<p class="text-xs dark:text-slate-400 text-slate-600">Aucune dépense pour le moment.</p>`
+                    : rows.map(t => {
+                        const pct = sp.total > 0 ? Math.round((t.total / sp.total) * 100) : 0;
+                        return `
+                            <div class="spending-row">
+                                <div class="flex items-center justify-between gap-3 text-sm">
+                                    <span class="font-semibold dark:text-slate-200 text-slate-800 truncate">${escapeHtml(t.name)}
+                                        <span class="text-[11px] font-normal text-slate-400">· ${t.count} cadeau${t.count > 1 ? 'x' : ''}</span></span>
+                                    <span class="font-bold text-amber-500 dark:text-amber-400 whitespace-nowrap tabular-nums">${formatEuro(t.total)}</span>
+                                </div>
+                                <div class="w-full dark:bg-slate-700 bg-slate-200 h-1.5 rounded-full overflow-hidden mt-1">
+                                    <div class="bg-gradient-to-r from-red-600 to-amber-500 h-full rounded-full" style="width:${pct}%"></div>
+                                </div>
+                            </div>`;
+                    }).join('');
+
+                const statBox = (label, value, extra = '') => `
+                    <div class="rounded-2xl border dark:border-slate-700/60 border-slate-200 dark:bg-slate-800/50 bg-slate-50 p-3">
+                        <p class="text-[11px] uppercase tracking-wider text-slate-400">${label}</p>
+                        <p class="text-lg sm:text-xl font-bold text-amber-500 dark:text-amber-400 tabular-nums ${extra}">${value}</p>
+                    </div>`;
+
+                const over = budget > 0 && sp.total > budget;
+                const pct = budget > 0 ? Math.min(100, Math.round((sp.total / budget) * 100)) : 0;
+                const remainingText = budget <= 0 ? 'Aucun budget défini : cliquez sur « Définir » pour fixer un plafond.'
+                    : (over ? `Dépassement de ${formatEuro(sp.total - budget)}` : `Reste ${formatEuro(budget - sp.total)} sur votre budget`);
+                const budgetHtml = `
+                    <div class="rounded-2xl border dark:border-slate-700/60 border-slate-200 dark:bg-slate-800/50 bg-slate-50 p-3 mb-3">
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <p class="text-[11px] uppercase tracking-wider text-slate-400"><i class="fa-solid fa-wallet text-amber-500 mr-1"></i> Mon budget</p>
+                            <button type="button" id="btn-edit-budget" class="px-3 py-1 rounded-xl dark:bg-slate-800 bg-white dark:hover:bg-slate-700 hover:bg-slate-100 text-amber-500 dark:text-amber-400 text-xs font-semibold border dark:border-slate-700 border-slate-300 transition flex items-center gap-1.5">
+                                <span class="tabular-nums">${budget > 0 ? formatEuro(budget) : 'Définir'}</span> <i class="fa-solid fa-pen"></i>
+                            </button>
+                        </div>
+                        <div class="w-full dark:bg-slate-700 bg-slate-200 h-2 rounded-full overflow-hidden">
+                            <div class="${over ? 'bg-red-600' : 'bg-gradient-to-r from-red-600 to-amber-500'} h-full rounded-full transition-all" style="width:${pct}%"></div>
+                        </div>
+                        <p class="text-[11px] mt-1.5 ${over ? 'text-red-500 font-semibold' : 'dark:text-slate-400 text-slate-500'}">${remainingText}</p>
+                    </div>`;
+
+                box.innerHTML = `
+                    <h3 class="font-bold text-sm sm:text-base dark:text-slate-200 text-slate-800 mb-3"><i class="fa-solid fa-coins text-amber-500 mr-1.5"></i> Mes dépenses</h3>
+                    ${budgetHtml}
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                        ${statBox('Total engagé', formatEuro(sp.total))}
+                        ${statBox('Déjà acheté', formatEuro(sp.bought))}
+                        ${statBox('Reste à acheter', formatEuro(sp.pending))}
+                    </div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Par membre de la famille</p>
+                    <div class="space-y-3">${rowsHtml}</div>
+                `;
+            }
+
+            // --- En-tête de la vue Famille ---
+            renderFamilyTargetSpent(sp);
+        }
+
+        function renderFamilyTargetSpent(sp) {
+            const el = document.getElementById('family-target-spent');
+            if (!el || !selectedFamilyTarget) return;
+            sp = sp || computeMySpending();
+            const t = sp.byTarget[selectedFamilyTarget.id];
+            el.innerHTML = t
+                ? `<i class="fa-solid fa-coins text-amber-500"></i> Vous avez dépensé <strong class="text-amber-500 dark:text-amber-400">${formatEuro(t.total)}</strong> pour cette liste (${t.count} cadeau${t.count > 1 ? 'x' : ''}, dont ${formatEuro(t.bought)} déjà acheté)`
+                : `<i class="fa-solid fa-coins text-amber-500"></i> Vous n'avez encore rien dépensé pour cette liste`;
+        }
+
+        function updateBudgetDisplay() {
+            if (currentProfile && currentProfile.budget_limit) {
+                const el = document.getElementById('display-budget-limit');
+                if (el) el.innerHTML = formatPriceHTML(currentProfile.budget_limit);
+            }
+        }
+
+
+        // ================= ONGLET A : MA LISTE & ENFANTS =================
+        
+        function renderActiveListSelector() {
+            const select = document.getElementById('active-list-selector');
+            const currentVal = activeListOwnerId;
+            select.innerHTML = `<option value="me">Ma propre liste</option>`;
+
+            // Page simple : le sélecteur n'apparaît que si l'utilisateur a des enfants
+            const hasKids = kidsCache.length > 0;
+            const wrap = document.getElementById('active-list-selector-wrap');
+            wrap.classList.toggle('hidden', !hasKids);
+            wrap.classList.toggle('flex', hasKids);
+            document.getElementById('mylist-title').classList.toggle('hidden', hasKids);
+
+            kidsCache.forEach(kid => {
+                const opt = document.createElement('option');
+                opt.value = kid.id;
+                opt.textContent = `Liste de ${kid.name} (Enfant)`;
+                select.appendChild(opt);
+            });
+
+            if (currentVal !== null) {
+                select.value = currentVal;
+            } else {
+                select.value = 'me';
+            }
+        }
+
+        document.getElementById('active-list-selector').addEventListener('change', (e) => {
+            const val = e.target.value;
+            activeListOwnerId = val === 'me' ? null : val;
+            refreshAllData();
+        });
+
+        function updateMyGiftsCache(allGifts) {
+            if (!activeListOwnerId) {
+                myGiftsCache = allGifts.filter(g => g.owner_id === currentUser.id && !g.owner_kid_id);
+            } else {
+                myGiftsCache = allGifts.filter(g => g.owner_kid_id === activeListOwnerId);
+            }
+        }
+
+
+        // ================= ADMINISTRATION : ENFANTS =================
+        const modalAdmin = document.getElementById('modal-admin');
+
+        function otherParentField(kid) {
+            return kid.parent_id === currentUser.id ? 'parent2_id' : 'parent_id';
+        }
+
+        function parentOptionsHtml(selectedId, allowNone) {
+            const others = Object.values(profilesCache)
+                .filter(pr => pr.id !== currentUser.id)
+                .sort((a, b) => (a.display_name || '').localeCompare(b.display_name || '', 'fr'));
+            let html = allowNone ? `<option value="">Aucun autre parent</option>` : '';
+            others.forEach(pr => {
+                html += `<option value="${pr.id}" ${pr.id === selectedId ? 'selected' : ''}>${escapeHtml(pr.display_name)}</option>`;
+            });
+            return html;
+        }
+
+        function renderAdminKids() {
+            const list = document.getElementById('admin-kids-list');
+            if (!list || !currentUser) return;
+
+            const addSel = document.getElementById('admin-kid-parent2');
+            const prev = addSel.value;
+            addSel.innerHTML = parentOptionsHtml(prev, true);
+
+            if (kidsCache.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-500 italic">Aucun enfant rattaché pour l'instant.</p>`;
+                return;
+            }
+
+            list.innerHTML = kidsCache.map(kid => {
+                const field = otherParentField(kid);
+                const isFirst = field === 'parent2_id';
+                return `
+                    <div class="admin-kid rounded-2xl border dark:border-slate-700/60 border-slate-200 dark:bg-slate-800/50 bg-slate-50 p-3 space-y-2" data-id="${kid.id}">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-bold text-sm dark:text-white text-slate-900 truncate">👶 ${escapeHtml(kid.name)}</span>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button type="button" class="btn-admin-rename gift-icon-btn text-slate-400 hover:text-amber-500 rounded-xl transition" data-id="${kid.id}" title="Renommer"><i class="fa-solid fa-pen"></i></button>
+                                <button type="button" class="btn-admin-delete gift-icon-btn text-slate-400 hover:text-red-400 rounded-xl hover:bg-red-500/10 transition" data-id="${kid.id}" title="Supprimer cet enfant"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 text-xs">
+                            <span class="dark:text-slate-400 text-slate-600 shrink-0">Autre parent :</span>
+                            <select class="admin-kid-other flex-1 min-w-0 dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-1.5 text-xs dark:text-white text-slate-900 focus:outline-none focus:border-amber-500" data-id="${kid.id}" data-field="${field}">
+                                ${parentOptionsHtml(kid[field], isFirst)}
+                            </select>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        function adminErrorMessage(err, fallback) {
+            if (err && /parent2_id/.test(err.message || '')) {
+                return "La colonne « parent2_id » est absente de la table kids : ajoutez-la dans Supabase (voir la migration SQL).";
+            }
+            return fallback;
+        }
+
+        let currentSettingsTab = 'families';
+        // Administrateur = profil dont le champ is_admin vaut true (table profiles)
+        function isFamilyAdmin() {
+            return !!currentProfile && currentProfile.is_admin === true;
+        }
+
+        function showSettingsTab(name) {
+            if (name === 'admin' && !isFamilyAdmin()) name = 'families';
+            currentSettingsTab = name;
+            ['families', 'kids', 'admin'].forEach(n => {
+                document.getElementById('settings-pane-' + n).classList.toggle('hidden', n !== name);
+            });
+            const base = 'flex-1 px-3 py-2 rounded-xl text-xs font-semibold transition ';
+            const on = base + 'bg-gradient-to-r from-red-600 to-amber-600 text-white shadow';
+            const off = base + 'dark:bg-slate-800 bg-slate-100 dark:text-slate-300 text-slate-600 dark:hover:bg-slate-700 hover:bg-slate-200';
+            ['families', 'kids', 'admin'].forEach(n => {
+                const btn = document.getElementById('tab-settings-' + n);
+                btn.className = (n === name ? on : off) + (n === 'admin' && !isFamilyAdmin() ? ' hidden' : '');
+            });
+            if (name === 'admin') renderFamilyAdmin();
+        }
+        document.getElementById('tab-settings-families').addEventListener('click', () => showSettingsTab('families'));
+        document.getElementById('tab-settings-kids').addEventListener('click', () => showSettingsTab('kids'));
+        document.getElementById('tab-settings-admin').addEventListener('click', () => showSettingsTab('admin'));
+
+        function openSettings(tab = 'families') {
+            renderSettings();
+            showSettingsTab(tab);
+            modalAdmin.classList.remove('hidden');
+        }
+        document.getElementById('btn-admin').addEventListener('click', () => openSettings('families'));
+
+        function renderSettings() {
+            renderAdminKids();
+            renderFamilies();
+            document.getElementById('tab-settings-admin').classList.toggle('hidden', !isFamilyAdmin());
+            if (currentSettingsTab === 'admin') renderFamilyAdmin();
+        }
+
+        // ================= ADMIN FAMILLES (réservé aux profils is_admin) =================
+        let adminData = { families: [], members: [], profiles: [] };
+
+        async function loadAdminData() {
+            const [f, m, pr] = await Promise.all([
+                sb.from('families').select('*'),
+                sb.from('family_members').select('*'),
+                sb.from('profiles').select('id, display_name')
+            ]);
+            if (f.error) throw f.error;
+            if (m.error) throw m.error;
+            if (pr.error) throw pr.error;
+            adminData = { families: f.data, members: m.data, profiles: pr.data };
+        }
+
+        async function renderFamilyAdmin() {
+            const list = document.getElementById('family-admin-list');
+            if (!list || !isFamilyAdmin()) return;
+            try {
+                await loadAdminData();
+            } catch (err) {
+                console.error(err);
+                list.innerHTML = `<p class="text-xs text-red-500">Impossible de charger les familles. Vérifiez que la migration « admin » a bien été exécutée (droits administrateur).</p>`;
+                return;
+            }
+            const nameOf = (uid) => {
+                const pr = adminData.profiles.find(x => x.id === uid);
+                return pr ? pr.display_name : 'Inconnu';
+            };
+            const fams = adminData.families.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr'));
+
+            let html = fams.length === 0
+                ? `<p class="text-xs text-slate-500 italic">Aucune famille pour l'instant.</p>`
+                : fams.map(f => {
+                    const memberIds = adminData.members.filter(m => m.family_id === f.id).map(m => m.user_id);
+                    const sorted = memberIds.slice().sort((a, b) => nameOf(a).localeCompare(nameOf(b), 'fr'));
+                    const chips = sorted.length === 0
+                        ? `<span class="text-xs text-slate-500 italic">Aucun membre</span>`
+                        : sorted.map(uid => `
+                            <span class="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full text-xs font-medium dark:bg-slate-700 bg-white border dark:border-slate-600 border-slate-300 dark:text-slate-100 text-slate-700">
+                                ${escapeHtml(nameOf(uid))}
+                                <button type="button" class="btn-admin-remove-member w-5 h-5 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition flex items-center justify-center" data-family="${f.id}" data-user="${uid}" title="Retirer ${escapeHtml(nameOf(uid))}"><i class="fa-solid fa-xmark text-[10px]"></i></button>
+                            </span>`).join('');
+                    const candidates = adminData.profiles
+                        .filter(pr => !memberIds.includes(pr.id))
+                        .sort((a, b) => (a.display_name || '').localeCompare(b.display_name || '', 'fr'));
+                    const addRow = candidates.length === 0
+                        ? `<p class="text-[11px] text-slate-500">Tous les comptes sont déjà dans cette famille.</p>`
+                        : `<div class="flex gap-2">
+                                <select class="admin-add-member-select flex-1 min-w-0 dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-300 rounded-xl px-3 py-1.5 text-xs dark:text-white text-slate-900 focus:outline-none focus:border-amber-500" data-family="${f.id}">
+                                    ${candidates.map(pr => `<option value="${pr.id}">${escapeHtml(pr.display_name)}</option>`).join('')}
+                                </select>
+                                <button type="button" class="btn-admin-add-member px-3 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white text-xs font-semibold transition shrink-0" data-family="${f.id}"><i class="fa-solid fa-user-plus mr-1"></i> Ajouter</button>
+                           </div>`;
+                    return `
+                        <div class="rounded-2xl border dark:border-slate-700/60 border-slate-200 dark:bg-slate-800/50 bg-slate-50 p-3 space-y-2.5">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="font-bold text-sm dark:text-white text-slate-900 truncate">🏡 ${escapeHtml(f.name)}
+                                    <span class="text-[11px] font-normal text-slate-400">· ${memberIds.length} membre${memberIds.length > 1 ? 's' : ''}</span></span>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <button type="button" class="btn-admin-rename-family gift-icon-btn text-slate-400 hover:text-amber-500 rounded-xl transition" data-family="${f.id}" title="Renommer"><i class="fa-solid fa-pen"></i></button>
+                                    <button type="button" class="btn-admin-delete-family gift-icon-btn text-slate-400 hover:text-red-400 rounded-xl hover:bg-red-500/10 transition" data-family="${f.id}" title="Supprimer la famille"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-1.5">${chips}</div>
+                            ${addRow}
+                            <p class="text-[11px] dark:text-slate-400 text-slate-500">Code d'invitation : <code class="font-bold tracking-widest text-amber-600 dark:text-amber-400">${escapeHtml(f.invite_code || '—')}</code></p>
+                        </div>`;
+                }).join('');
+
+            // Comptes qui ne sont dans aucune famille
+            const inAny = new Set(adminData.members.map(m => m.user_id));
+            const orphans = adminData.profiles.filter(pr => !inAny.has(pr.id));
+            if (orphans.length) {
+                html += `<p class="text-xs dark:text-slate-400 text-slate-600"><i class="fa-solid fa-circle-info text-amber-500 mr-1"></i> Sans famille : <strong>${orphans.map(o => escapeHtml(o.display_name)).join(', ')}</strong></p>`;
+            }
+            list.innerHTML = html;
+        }
+
+        function adminActionError(err, fallback) {
+            const msg = (err && (err.message || '')) || '';
+            if (/row-level security|permission denied/i.test(msg)) return "Action refusée par la base de données : exécutez la migration « admin » (droits administrateur).";
+            return fallback;
+        }
+
+        document.getElementById('form-admin-create-family').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!isFamilyAdmin()) return;
+            const input = document.getElementById('admin-create-family-name');
+            const name = input.value.trim();
+            if (!name) return;
+            try {
+                const { error } = await sb.from('families').insert({ name, created_by: currentUser.id });
+                if (error) throw error;
+                input.value = '';
+                await refreshAllData();
+            } catch (err) {
+                console.error(err);
+                showAlert("Erreur", adminActionError(err, "Impossible de créer la famille."));
+            }
+        });
+
+        document.getElementById('family-admin-list').addEventListener('click', async (e) => {
+            if (!isFamilyAdmin()) return;
+            const removeBtn = e.target.closest('.btn-admin-remove-member');
+            const addBtn = e.target.closest('.btn-admin-add-member');
+            const renameBtn = e.target.closest('.btn-admin-rename-family');
+            const deleteBtn = e.target.closest('.btn-admin-delete-family');
+            const famName = (id) => { const f = adminData.families.find(x => x.id === id); return f ? f.name : ''; };
+
+            try {
+                if (addBtn) {
+                    const sel = document.querySelector(`.admin-add-member-select[data-family="${addBtn.dataset.family}"]`);
+                    if (!sel || !sel.value) return;
+                    const { error } = await sb.from('family_members').insert({ family_id: addBtn.dataset.family, user_id: sel.value });
+                    if (error) throw error;
+                    await refreshAllData();
+                } else if (removeBtn) {
+                    const pr = adminData.profiles.find(x => x.id === removeBtn.dataset.user);
+                    const ok = await showConfirm("Retirer le membre", `Retirer ${pr ? pr.display_name : 'ce membre'} de « ${famName(removeBtn.dataset.family)} » ?`);
+                    if (!ok) return;
+                    const { error } = await sb.from('family_members').delete()
+                        .eq('family_id', removeBtn.dataset.family).eq('user_id', removeBtn.dataset.user);
+                    if (error) throw error;
+                    await refreshAllData();
+                } else if (renameBtn) {
+                    const id = renameBtn.dataset.family;
+                    const newName = await showPrompt("Renommer la famille", "Nouveau nom :", "Nom de la famille", famName(id));
+                    if (!newName || !newName.trim() || newName.trim() === famName(id)) return;
+                    const { error } = await sb.from('families').update({ name: newName.trim() }).eq('id', id);
+                    if (error) throw error;
+                    await refreshAllData();
+                } else if (deleteBtn) {
+                    const id = deleteBtn.dataset.family;
+                    const ok = await showConfirm("Supprimer la famille", `Supprimer « ${famName(id)} » pour tous ses membres ? Leurs listes et cadeaux ne sont pas effacés.`);
+                    if (!ok) return;
+                    const { error } = await sb.from('families').delete().eq('id', id);
+                    if (error) throw error;
+                    selectedFamilyTarget = null;
+                    await refreshAllData();
+                }
+            } catch (err) {
+                console.error(err);
+                showAlert("Erreur", adminActionError(err, "L'action a échoué."));
+            }
+        });
+
+        // ----- Familles : affichage -----
+        function renderFamilies() {
+            const list = document.getElementById('families-list');
+            if (!list || !currentUser) return;
+            document.getElementById('families-notice').classList.toggle('hidden', familiesAvailable);
+            document.getElementById('families-forms').classList.toggle('hidden', !familiesAvailable);
+            if (!familiesAvailable) { list.innerHTML = ''; return; }
+
+            if (familiesCache.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-500 italic">Vous ne faites partie d'aucune famille. Créez-en une ou rejoignez-en une avec un code d'invitation.</p>`;
+                return;
+            }
+
+            list.innerHTML = familiesCache.map(f => {
+                const isCreator = f.created_by === currentUser.id;
+                const members = (familyMembersMap[f.id] || []).slice().sort((a, b) => {
+                    if (a === currentUser.id) return -1;
+                    if (b === currentUser.id) return 1;
+                    const na = profilesCache[a] ? profilesCache[a].display_name : '';
+                    const nb = profilesCache[b] ? profilesCache[b].display_name : '';
+                    return na.localeCompare(nb, 'fr');
+                });
+                const chips = members.map(uid => {
+                    const name = uid === currentUser.id ? 'Vous' : (profilesCache[uid] ? profilesCache[uid].display_name : 'Membre');
+                    const crown = uid === f.created_by ? ' 👑' : '';
+                    return `<span class="px-2.5 py-1 rounded-full text-xs font-medium dark:bg-slate-700 bg-white border dark:border-slate-600 border-slate-300 dark:text-slate-100 text-slate-700">${escapeHtml(name)}${crown}</span>`;
+                }).join('');
+                return `
+                    <div class="family-card rounded-2xl border dark:border-slate-700/60 border-slate-200 dark:bg-slate-800/50 bg-slate-50 p-3 space-y-2.5" data-id="${f.id}">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-bold text-sm dark:text-white text-slate-900 truncate">🏡 ${escapeHtml(f.name)}
+                                <span class="text-[11px] font-normal text-slate-400">· ${members.length} membre${members.length > 1 ? 's' : ''}</span></span>
+                            <div class="flex items-center gap-1 shrink-0">
+                                ${isCreator ? `<button type="button" class="btn-family-rename gift-icon-btn text-slate-400 hover:text-amber-500 rounded-xl transition" data-id="${f.id}" title="Renommer"><i class="fa-solid fa-pen"></i></button>` : ''}
+                                <button type="button" class="btn-family-leave gift-icon-btn text-slate-400 hover:text-red-400 rounded-xl hover:bg-red-500/10 transition" data-id="${f.id}" title="Quitter cette famille"><i class="fa-solid fa-right-from-bracket"></i></button>
+                                ${isCreator ? `<button type="button" class="btn-family-delete gift-icon-btn text-slate-400 hover:text-red-400 rounded-xl hover:bg-red-500/10 transition" data-id="${f.id}" title="Supprimer la famille"><i class="fa-solid fa-trash"></i></button>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5">${chips}</div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="dark:text-slate-400 text-slate-600">Code d'invitation :</span>
+                            <code class="px-2 py-1 rounded-lg dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 font-bold tracking-widest text-amber-600 dark:text-amber-400">${escapeHtml(f.invite_code || '—')}</code>
+                            <button type="button" class="btn-family-copy px-2.5 py-1 rounded-lg dark:bg-slate-700 bg-slate-200 dark:hover:bg-slate-600 hover:bg-slate-300 dark:text-slate-200 text-slate-700 font-semibold transition" data-code="${escapeHtml(f.invite_code || '')}"><i class="fa-regular fa-copy"></i> Copier</button>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        function familyErrorMessage(err, fallback) {
+            const msg = (err && err.message) || '';
+            if (/Code invalide/i.test(msg)) return "Code d'invitation invalide. Vérifiez-le auprès d'un membre de la famille.";
+            if (/create_family|join_family|families|family_members/.test(msg)) return "Les familles ne sont pas encore configurées sur la base de données (migration SQL).";
+            return fallback;
+        }
+
+        document.getElementById('form-create-family').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('create-family-name');
+            const name = input.value.trim();
+            if (!name) return;
+            try {
+                const { error } = await sb.rpc('create_family', { p_name: name });
+                if (error) throw error;
+                input.value = '';
+                await refreshAllData();
+            } catch (err) {
+                console.error(err);
+                showAlert("Erreur", familyErrorMessage(err, "Impossible de créer la famille."));
+            }
+        });
+
+        document.getElementById('form-join-family').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('join-family-code');
+            const code = input.value.trim().toUpperCase();
+            if (!code) return;
+            try {
+                const { error } = await sb.rpc('join_family', { p_code: code });
+                if (error) throw error;
+                input.value = '';
+                await refreshAllData();
+            } catch (err) {
+                console.error(err);
+                showAlert("Erreur", familyErrorMessage(err, "Impossible de rejoindre cette famille."));
+            }
+        });
+
+        document.getElementById('families-list').addEventListener('click', async (e) => {
+            const copyBtn = e.target.closest('.btn-family-copy');
+            const renameBtn = e.target.closest('.btn-family-rename');
+            const leaveBtn = e.target.closest('.btn-family-leave');
+            const deleteBtn = e.target.closest('.btn-family-delete');
+
+            if (copyBtn) {
+                const code = copyBtn.dataset.code;
+                try {
+                    await navigator.clipboard.writeText(code);
+                } catch (_) {
+                    const ta = document.createElement('textarea');
+                    ta.value = code; document.body.appendChild(ta); ta.select();
+                    try { document.execCommand('copy'); } catch (__) {}
+                    ta.remove();
+                }
+                const old = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copié !';
+                setTimeout(() => { copyBtn.innerHTML = old; }, 1500);
+            } else if (renameBtn) {
+                const fam = familiesCache.find(f => f.id === renameBtn.dataset.id);
+                if (!fam) return;
+                const newName = await showPrompt("Renommer la famille", "Nouveau nom :", "Nom de la famille", fam.name);
+                if (!newName || !newName.trim() || newName.trim() === fam.name) return;
+                try {
+                    const { error } = await sb.from('families').update({ name: newName.trim() }).eq('id', fam.id);
+                    if (error) throw error;
+                    await refreshAllData();
+                } catch (err) {
+                    showAlert("Erreur", "Impossible de renommer la famille.");
+                }
+            } else if (leaveBtn) {
+                const fam = familiesCache.find(f => f.id === leaveBtn.dataset.id);
+                if (!fam) return;
+                const ok = await showConfirm("Quitter la famille", `Voulez-vous quitter « ${fam.name} » ? Vous ne verrez plus ses membres (sauf s'ils sont dans une autre de vos familles).`);
+                if (!ok) return;
+                try {
+                    const { error } = await sb.from('family_members').delete().eq('family_id', fam.id).eq('user_id', currentUser.id);
+                    if (error) throw error;
+                    selectedFamilyTarget = null;
+                    await refreshAllData();
+                } catch (err) {
+                    showAlert("Erreur", "Impossible de quitter cette famille.");
+                }
+            } else if (deleteBtn) {
+                const fam = familiesCache.find(f => f.id === deleteBtn.dataset.id);
+                if (!fam) return;
+                const ok = await showConfirm("Supprimer la famille", `Supprimer « ${fam.name} » pour tous ses membres ? Leurs listes et cadeaux ne sont pas effacés, mais ils ne se verront plus via cette famille.`);
+                if (!ok) return;
+                try {
+                    const { error } = await sb.from('families').delete().eq('id', fam.id);
+                    if (error) throw error;
+                    selectedFamilyTarget = null;
+                    await refreshAllData();
+                } catch (err) {
+                    showAlert("Erreur", "Impossible de supprimer la famille.");
+                }
+            }
+        });
+        const closeAdmin = () => modalAdmin.classList.add('hidden');
+        document.getElementById('btn-close-admin').addEventListener('click', closeAdmin);
+        document.getElementById('btn-close-admin-x').addEventListener('click', closeAdmin);
+        modalAdmin.addEventListener('click', (e) => { if (e.target === modalAdmin) closeAdmin(); });
+
+        document.getElementById('form-admin-add-kid').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nameInput = document.getElementById('admin-kid-name');
+            const name = nameInput.value.trim();
+            if (!name) return;
+            const parent2 = document.getElementById('admin-kid-parent2').value || null;
+            try {
+                const { error } = await sb.from('kids').insert({ parent_id: currentUser.id, parent2_id: parent2, name });
+                if (error) throw error;
+                nameInput.value = '';
+                document.getElementById('admin-kid-parent2').value = '';
+                await refreshAllData();
+            } catch (err) {
+                console.error(err);
+                showAlert("Erreur", adminErrorMessage(err, "Impossible d'ajouter cet enfant."));
+            }
+        });
+
+        const adminKidsList = document.getElementById('admin-kids-list');
+        adminKidsList.addEventListener('change', async (e) => {
+            const sel = e.target.closest('.admin-kid-other');
+            if (!sel) return;
+            try {
+                const { error } = await sb.from('kids').update({ [sel.dataset.field]: sel.value || null }).eq('id', sel.dataset.id);
+                if (error) throw error;
+                await refreshAllData();
+            } catch (err) {
+                console.error(err);
+                showAlert("Erreur", adminErrorMessage(err, "Impossible de modifier le parent de cet enfant."));
+                renderAdminKids();
+            }
+        });
+        adminKidsList.addEventListener('click', async (e) => {
+            const renameBtn = e.target.closest('.btn-admin-rename');
+            const deleteBtn = e.target.closest('.btn-admin-delete');
+            if (renameBtn) {
+                const kid = allKidsCache[renameBtn.dataset.id];
+                if (!kid) return;
+                const newName = await showPrompt("Renommer l'enfant", "Nouveau prénom :", "Prénom", kid.name);
+                if (!newName || !newName.trim() || newName.trim() === kid.name) return;
+                try {
+                    const { error } = await sb.from('kids').update({ name: newName.trim() }).eq('id', kid.id);
+                    if (error) throw error;
+                    await refreshAllData();
+                } catch (err) {
+                    showAlert("Erreur", "Impossible de renommer cet enfant.");
+                }
+            } else if (deleteBtn) {
+                await deleteKid(deleteBtn.dataset.id);
+            }
+        });
+
+        async function deleteKid(kidId) {
+            const confirmDel = await showConfirm("Supprimer l'enfant", "Voulez-vous supprimer cet enfant et tous ses cadeaux associés ?");
+            if (!confirmDel) return;
+
+            try {
+                const { error } = await sb.from('kids').delete().eq('id', kidId);
+                if (error) throw error;
+                if (activeListOwnerId === kidId) activeListOwnerId = null;
+                await refreshAllData();
+            } catch (err) {
+                showAlert("Erreur", "Impossible de supprimer cet enfant.");
+            }
+        }
+
+        async function editBudget() {
+            const currentLimit = currentProfile && currentProfile.budget_limit ? currentProfile.budget_limit : 150;
+            const newLimitStr = await showPrompt("Modifier le budget global", "Entrez votre montant limite (€) :", "Plafond (€)", currentLimit);
+            if (newLimitStr === null) return;
+            const newLimit = parseFloat(String(newLimitStr).replace(',', '.'));
+            if (isNaN(newLimit) || newLimit < 0) return;
+
+            try {
+                const { error } = await sb.from('profiles').update({ budget_limit: newLimit }).eq('id', currentUser.id);
+                if (error) throw error;
+                currentProfile.budget_limit = newLimit;
+                renderSpending();
+            } catch (err) {
+                showAlert("Erreur", "Impossible de modifier le budget.");
+            }
+        }
+
+        // Le résumé est re-généré à chaque rafraîchissement : délégation d'événement
+        document.getElementById('spending-summary').addEventListener('click', (e) => {
+            if (e.target.closest('#btn-edit-budget')) editBudget();
+        });
+
+        function renderMyGifts() {
+            const container = document.getElementById('my-gifts-container');
+            const emptyEl = document.getElementById('my-gifts-empty');
+            container.innerHTML = '';
+
+            if (myGiftsCache.length === 0) {
+                emptyEl.classList.remove('hidden');
+                container.classList.add('hidden');
+                return;
+            }
+            emptyEl.classList.add('hidden');
+            container.classList.remove('hidden');
+
+            myGiftsCache.forEach(gift => {
+                const priorityLabels = { 1: '🔥 Haute', 2: '⭐ Moyenne', 3: '🌱 Basse' };
+                const priorityColors = { 1: 'bg-red-500/20 text-red-300 border-red-500/30', 2: 'bg-amber-500/20 text-amber-300 border-amber-500/30', 3: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' };
+                
+                let suggesterText = '';
+                if (gift.suggested_by && profilesCache[gift.suggested_by]) {
+                    suggesterText = `<span class="text-xs text-amber-500 dark:text-amber-400 font-medium"><i class="fa-solid fa-lightbulb"></i> Suggéré par ${escapeHtml(profilesCache[gift.suggested_by].display_name)}</span>`;
+                }
+
+                const row = document.createElement('div');
+                row.className = 'gift-row gift-row--mine';
+                row.innerHTML = `
+                    <div class="gift-main">
+                        <h3 class="gift-title dark:text-white text-slate-900" title="${escapeHtml(gift.title)}">${escapeHtml(gift.title)}</h3>
+                        <div class="gift-meta">
+                            <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold border ${priorityColors[gift.priority] || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'}">${priorityLabels[gift.priority] || ''}</span>
+                            ${gift.price ? formatPriceHTML(gift.price) : ''}
+                            ${suggesterText}
+                        </div>
+                        ${gift.description ? `<p class="text-xs dark:text-slate-400 text-slate-600 truncate mb-1">${escapeHtml(gift.description)}</p>` : ''}
+                        ${gift.link ? `<a href="${escapeHtml(gift.link)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-amber-500 dark:text-amber-400 hover:underline font-semibold"><i class="fa-solid fa-link"></i> Lien produit</a>` : ''}
+                    </div>
+
+                    <div class="gift-side">
+                        <div class="gift-status">
+                            <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-500 dark:text-amber-300 font-medium border border-amber-500/20">
+                                <i class="fa-solid fa-shield-cat"></i> Secret préservé
+                            </span>
+                        </div>
+                        <div class="gift-icons">
+                            <button type="button" class="btn-edit-gift gift-icon-btn text-slate-400 hover:text-amber-500 dark:hover:text-amber-400 rounded-xl dark:hover:bg-slate-800 hover:bg-slate-200 transition" data-id="${gift.id}" title="Modifier">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button type="button" class="btn-delete-gift gift-icon-btn text-slate-400 hover:text-red-400 rounded-xl hover:bg-red-500/10 transition" data-id="${gift.id}" title="Supprimer">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+
+            container.querySelectorAll('.btn-edit-gift').forEach(btn => {
+                btn.addEventListener('click', () => openGiftModal(btn.dataset.id));
+            });
+            container.querySelectorAll('.btn-delete-gift').forEach(btn => {
+                btn.addEventListener('click', () => deleteGift(btn.dataset.id));
+            });
+        }
+
+
+        // ================= ONGLET B : LISTES DE LA FAMILLE =================
+        
+        function renderFamilyMembersChips() {
+            const container = document.getElementById('family-members-chips');
+            const emptyEl = document.getElementById('family-members-empty');
+            container.innerHTML = '';
+
+            let targets = [];
+
+            Object.keys(profilesCache).forEach(id => {
+                if (id !== currentUser.id) {
+                    targets.push({ type: 'profile', id: id, name: profilesCache[id].display_name, icon: 'fa-user' });
+                }
+            });
+
+            Object.values(allKidsCache).forEach(kid => {
+                const parentName = kidParentNames(kid) || 'Famille';
+                targets.push({ type: 'kid', id: kid.id, name: `${kid.name} (${parentName})`, icon: 'child' });
+            });
+
+            // La cible sélectionnée n'est plus visible (famille quittée…)
+            if (selectedFamilyTarget && !targets.some(t => t.id === selectedFamilyTarget.id)) selectedFamilyTarget = null;
+
+            if (targets.length === 0) {
+                if (familiesAvailable && familiesCache.length === 0) {
+                    emptyEl.innerHTML = `
+                        <div class="text-6xl mb-3">🏡</div>
+                        <p class="dark:text-slate-300 text-slate-700 font-medium">Vous ne faites partie d'aucune famille pour le moment.</p>
+                        <p class="text-xs text-slate-500 mt-1 mb-4">Créez votre famille ou rejoignez-en une avec un code d'invitation.</p>
+                        <button type="button" id="btn-empty-open-settings" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-semibold text-sm shadow transition"><i class="fa-solid fa-gear mr-1.5"></i> Ouvrir les paramètres</button>`;
+                    document.getElementById('btn-empty-open-settings').addEventListener('click', () => openSettings('families'));
+                } else {
+                    emptyEl.innerHTML = `
+                        <div class="text-6xl mb-3">🏡</div>
+                        <p class="dark:text-slate-300 text-slate-700 font-medium">Aucun autre membre dans vos familles pour le moment.</p>
+                        <p class="text-xs text-slate-500 mt-1">Partagez le code d'invitation d'une famille depuis ⚙️ Paramètres.</p>`;
+                }
+                emptyEl.classList.remove('hidden');
+                document.getElementById('family-selected-view').classList.add('hidden');
+                return;
+            }
+            emptyEl.classList.add('hidden');
+
+            targets.forEach(t => {
+                const btn = document.createElement('button');
+                const isSelected = selectedFamilyTarget && selectedFamilyTarget.id === t.id;
+                btn.className = `px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl font-semibold text-xs sm:text-sm transition flex items-center gap-2.5 sm:gap-3 border shadow-lg shrink-0 ${isSelected ? 'bg-gradient-to-r from-red-600 to-amber-600 text-white border-amber-500/50' : 'dark:bg-slate-900/90 bg-white dark:text-slate-200 text-slate-800 dark:border-slate-800 border-slate-200 dark:hover:border-slate-700 hover:border-slate-300'}`;
+                btn.innerHTML = `<i class="fa-solid ${t.type === 'kid' ? 'fa-child' : 'fa-user'} text-amber-500 dark:text-amber-400"></i> <span>${escapeHtml(t.name)}</span>`;
+                
+                btn.addEventListener('click', () => {
+                    selectedFamilyTarget = t;
+                    renderFamilyMembersChips();
+                    renderFamilySelectedView();
+                });
+
+                container.appendChild(btn);
+            });
+        }
+
+        // Rendu en liste verticale empilée pour les listes de la famille
+        function renderFamilySelectedView() {
+            const viewContainer = document.getElementById('family-selected-view');
+            const titleEl = document.getElementById('family-target-title');
+            const actionContainer = document.getElementById('family-action-buttons-container');
+            const container = document.getElementById('family-gifts-grid');
+
+            if (!selectedFamilyTarget) {
+                viewContainer.classList.add('hidden');
+                return;
+            }
+
+            viewContainer.classList.remove('hidden');
+            titleEl.textContent = selectedFamilyTarget.name;
+            renderFamilyTargetSpent();
+
+            actionContainer.innerHTML = '';
+            if (selectedFamilyTarget.type === 'kid') {
+                const btnAdd = document.createElement('button');
+                btnAdd.type = 'button';
+                btnAdd.className = 'w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2 shadow';
+                btnAdd.innerHTML = `<i class="fa-solid fa-plus"></i> Ajouter un cadeau`;
+                btnAdd.addEventListener('click', () => {
+                    openGiftModalForFamily(null, selectedFamilyTarget.id, false);
+                });
+                actionContainer.appendChild(btnAdd);
+            } else {
+                const btnSuggest = document.createElement('button');
+                btnSuggest.type = 'button';
+                btnSuggest.className = 'w-full sm:w-auto px-4 py-2 dark:bg-slate-800 bg-slate-100 dark:hover:bg-slate-700 hover:bg-slate-200 text-amber-500 dark:text-amber-400 border dark:border-slate-700 border-slate-300 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2';
+                btnSuggest.innerHTML = `<i class="fa-solid fa-lightbulb"></i> Suggérer une idée cadeau`;
+                btnSuggest.addEventListener('click', () => {
+                    openGiftModalForFamily(selectedFamilyTarget.id, null, true);
+                });
+                actionContainer.appendChild(btnSuggest);
+            }
+
+            const gifts = familyGiftsCache[selectedFamilyTarget.id] || [];
+            // Conserve le focus du champ de commentaire pendant les rafraîchissements temps réel
+            const activeEl = document.activeElement;
+            if (activeEl && activeEl.classList && activeEl.classList.contains('gc-input')) focusCommentGiftId = activeEl.dataset.giftId;
+            container.className = 'space-y-3';
+            container.innerHTML = '';
+
+            if (gifts.length === 0) {
+                container.innerHTML = `<div class="p-12 text-center text-slate-400 text-sm rounded-3xl border dark:border-slate-800 border-slate-200">Aucun cadeau dans cette liste pour le moment. 🎁</div>`;
+                return;
+            }
+
+            const priorityLabels = { 1: '🔥 Haute', 2: '⭐ Moyenne', 3: '🌱 Basse' };
+            const priorityColors = { 1: 'bg-red-500/20 text-red-300 border-red-500/30', 2: 'bg-amber-500/20 text-amber-300 border-amber-500/30', 3: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' };
+            const badgeBase = 'gcard-badge px-3 py-1 rounded-full text-xs font-semibold border';
+            const btnPrimary = 'gbtn px-4 py-2 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white text-xs font-semibold rounded-xl shadow transition';
+            const btnGhost = 'gbtn px-4 py-2 dark:bg-slate-800 bg-slate-100 dark:hover:bg-slate-700 hover:bg-slate-200 text-amber-500 dark:text-amber-400 border dark:border-slate-700 border-slate-300 text-xs font-semibold rounded-xl transition';
+
+            gifts.forEach(gift => {
+                const res = reservationsCache[gift.id];
+                const participants = res ? (res.reservation_participants || []) : [];
+                const isParticipant = participants.some(p => p.user_id === currentUser.id);
+                const status = res ? res.status : 'available';
+
+                // --- Badge de statut ---
+                const badges = {
+                    available: `<span class="${badgeBase} bg-emerald-500/20 text-emerald-300 border-emerald-500/30"><i class="fa-solid fa-circle-check"></i> Disponible</span>`,
+                    reserved:  `<span class="${badgeBase} bg-amber-500/20 text-amber-300 border-amber-500/30"><i class="fa-solid fa-clock"></i> Réservé</span>`,
+                    bought:    `<span class="${badgeBase} bg-blue-500/20 text-blue-300 border-blue-500/30"><i class="fa-solid fa-bag-shopping"></i> Acheté</span>`,
+                    wrapped:   `<span class="${badgeBase} bg-purple-500/20 text-purple-300 border-purple-500/30"><i class="fa-solid fa-box-open"></i> Emballé</span>`
+                };
+                const statusBadge = badges[status] || badges.available;
+
+                // --- Infos secondaires ---
+                const suggester = (gift.suggested_by && profilesCache[gift.suggested_by])
+                    ? `<span class="text-xs text-amber-500 dark:text-amber-400 font-medium"><i class="fa-solid fa-lightbulb"></i> Idée de ${escapeHtml(profilesCache[gift.suggested_by].display_name)}</span>` : '';
+
+                // --- Cagnotte / réservation ---
+                let potHtml = '';
+                if (res) {
+                    const total = participants.reduce((acc, p) => acc + parseFloat(p.share || 0), 0);
+                    const price = gift.price ? parseFloat(gift.price) : 0;
+                    const percent = price > 0 ? Math.min(100, Math.round((total / price) * 100)) : 100;
+                    const names = participants.map(p => {
+                        const n = p.user_id === currentUser.id ? 'Vous' : (profilesCache[p.user_id] ? profilesCache[p.user_id].display_name : 'Membre');
+                        return escapeHtml(n);
+                    });
+                    const detail = participants.map(p => {
+                        const n = p.user_id === currentUser.id ? 'Vous' : (profilesCache[p.user_id] ? profilesCache[p.user_id].display_name : 'Membre');
+                        return `${n} : ${formatEuro(p.share || 0)}`;
+                    }).join(' · ');
+                    const isRealPot = participants.length > 1 || (price > 0 && total < price - 0.005);
+
+                    if (isRealPot) {
+                        potHtml = `
+                            <div class="gcard-pot dark:text-slate-300 text-slate-700" title="${escapeHtml(detail)}">
+                                <span><i class="fa-solid fa-piggy-bank text-amber-500"></i> ${formatEuro(total)}${price > 0 ? ' / ' + formatEuro(price) : ''}</span>
+                                <div class="gcard-pot-bar"><div class="gcard-pot-fill" style="width:${percent}%"></div></div>
+                                <span class="text-amber-500 dark:text-amber-400">${percent}%</span>
+                            </div>
+                            <p class="gcard-who dark:text-slate-400 text-slate-600"><i class="fa-solid fa-users"></i> ${names.join(', ')}</p>`;
+                    } else {
+                        potHtml = `<p class="gcard-who dark:text-slate-400 text-slate-600"><i class="fa-solid fa-user-check"></i> Pris en charge par ${names.join(', ') || 'un membre'}</p>`;
+                    }
+                }
+
+                // --- Actions : 1 bouton principal + menu « ⋯ » ---
+                let primaryHtml = '';
+                const menu = [];
+                const gid = gift.id;
+                if (!res) {
+                    primaryHtml = `
+                        <button type="button" class="btn-reserve-solo ${btnPrimary}" data-gift-id="${gid}"><i class="fa-solid fa-gift mr-1"></i> Je m'en occupe</button>
+                        <button type="button" class="btn-join-res ${btnGhost}" data-gift-id="${gid}"><i class="fa-solid fa-handshake mr-1"></i> Achat groupé</button>`;
+                } else if (!isParticipant) {
+                    primaryHtml = `<button type="button" class="btn-join-res ${btnPrimary}" data-gift-id="${gid}"><i class="fa-solid fa-handshake mr-1"></i> Participer</button>`;
+                } else {
+                    if (status === 'reserved') {
+                        primaryHtml = `<button type="button" class="btn-advance-status gbtn px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow transition" data-gift-id="${gid}" data-status="bought"><i class="fa-solid fa-bag-shopping mr-1"></i> J'ai acheté</button>`;
+                        menu.push(`<button type="button" class="btn-join-res" data-gift-id="${gid}"><i class="fa-solid fa-sliders"></i> Modifier ma part</button>`);
+                    } else if (status === 'bought') {
+                        primaryHtml = `<button type="button" class="btn-advance-status gbtn px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-xl shadow transition" data-gift-id="${gid}" data-status="wrapped"><i class="fa-solid fa-box-open mr-1"></i> Marquer emballé</button>`;
+                        menu.push(`<button type="button" class="btn-advance-status" data-gift-id="${gid}" data-status="reserved"><i class="fa-solid fa-rotate-left"></i> Repasser en « Réservé »</button>`);
+                    } else if (status === 'wrapped') {
+                        primaryHtml = `<span class="text-xs font-semibold text-purple-400">Prêt à offrir 🎁</span>`;
+                        menu.push(`<button type="button" class="btn-advance-status" data-gift-id="${gid}" data-status="bought"><i class="fa-solid fa-rotate-left"></i> Repasser en « Acheté »</button>`);
+                    }
+                    menu.push(`<button type="button" class="btn-withdraw-part is-danger" data-gift-id="${gid}"><i class="fa-solid fa-person-walking-arrow-right"></i> Me retirer</button>`);
+                }
+                if (gift.suggested_by && gift.suggested_by === currentUser.id) {
+                    menu.push(`<button type="button" class="btn-edit-suggestion" data-gift-id="${gid}"><i class="fa-solid fa-pen"></i> Modifier ma suggestion</button>`);
+                }
+                if (selectedFamilyTarget.type === 'kid') {
+                    if (menu.length) menu.push('<hr>');
+                    menu.push(`<button type="button" class="btn-delete-kid-gift is-danger" data-id="${gid}"><i class="fa-solid fa-trash"></i> Supprimer le cadeau</button>`);
+                }
+                const menuHtml = menu.length ? `
+                    <details class="gmenu">
+                        <summary title="Plus d'actions" aria-label="Plus d'actions"><i class="fa-solid fa-ellipsis"></i></summary>
+                        <div class="gmenu-pop">${menu.join('')}</div>
+                    </details>` : '';
+
+                // --- Commentaires ---
+                const showComments = canSeeComments(gift);
+                const giftComments = commentsCache[gift.id] || [];
+                const commentsOpen = showComments && openCommentPanels.has(gift.id);
+                const commentBtnHtml = showComments ? `
+                    <button type="button" class="btn-toggle-comments gcomment-btn ${commentsOpen ? 'is-open' : ''}" data-gift-id="${gift.id}" title="Commentaires" aria-expanded="${commentsOpen}">
+                        <i class="fa-regular fa-comment"></i>${giftComments.length ? `<span class="gcomment-count">${giftComments.length}</span>` : ''}
+                    </button>` : '';
+
+                const row = document.createElement('div');
+                row.className = `gcard gcard--${status} dark:bg-slate-900/80 bg-white/90`;
+                row.innerHTML = `
+                    <div class="gcard-head">
+                        <h4 class="gcard-title dark:text-white text-slate-900" title="${escapeHtml(gift.title)}">${escapeHtml(gift.title)}</h4>
+                        ${statusBadge}
+                    </div>
+                    <div class="gcard-meta">
+                        ${gift.price ? formatPriceHTML(gift.price) : ''}
+                        ${priorityLabels[gift.priority] ? `<span class="text-xs px-2.5 py-0.5 rounded-full font-semibold border ${priorityColors[gift.priority] || ''}">${priorityLabels[gift.priority]}</span>` : ''}
+                        ${suggester}
+                    </div>
+                    ${gift.description ? `<p class="gcard-desc dark:text-slate-400 text-slate-600">${escapeHtml(gift.description)}</p>` : ''}
+                    ${gift.link ? `<a href="${escapeHtml(gift.link)}" target="_blank" rel="noopener noreferrer" class="gcard-link text-amber-500 dark:text-amber-400 hover:underline"><i class="fa-solid fa-arrow-up-right-from-square"></i> Voir le produit</a>` : ''}
+                    ${potHtml}
+                    <div class="gcard-foot">
+                        ${primaryHtml}
+                        ${commentBtnHtml}
+                        ${menuHtml}
+                    </div>
+                    ${commentsOpen ? buildCommentsPanel(gift) : ''}
+                `;
+                container.appendChild(row);
+            });
+
+            // Ferme le menu « ⋯ » après une action
+            container.querySelectorAll('.gmenu-pop button').forEach(b => {
+                b.addEventListener('click', () => { const d = b.closest('details'); if (d) d.removeAttribute('open'); });
+            });
+
+            // Menu « ⋯ » : passe au-dessus des cartes suivantes et s'ouvre vers le haut s'il manque de place
+            container.querySelectorAll('details.gmenu').forEach(d => {
+                d.addEventListener('toggle', () => {
+                    const card = d.closest('.gcard');
+                    if (card) card.classList.toggle('gcard-open', d.open);
+                    if (d.open) {
+                        d.classList.remove('gmenu-up');
+                        const pop = d.querySelector('.gmenu-pop');
+                        const r = pop.getBoundingClientRect();
+                        if (r.bottom > window.innerHeight - 8 && d.getBoundingClientRect().top > r.height + 16) d.classList.add('gmenu-up');
+                    }
+                });
+            });
+
+            // Commentaires
+            container.querySelectorAll('.btn-toggle-comments').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.giftId;
+                    if (openCommentPanels.has(id)) openCommentPanels.delete(id);
+                    else { openCommentPanels.add(id); focusCommentGiftId = id; }
+                    renderFamilySelectedView();
+                });
+            });
+            container.querySelectorAll('.btn-send-comment').forEach(btn => {
+                btn.addEventListener('click', () => sendComment(btn.dataset.giftId));
+            });
+            container.querySelectorAll('.gc-input').forEach(inp => {
+                const autosize = () => { inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight, 112) + 'px'; };
+                inp.addEventListener('input', () => { commentDrafts[inp.dataset.giftId] = inp.value; autosize(); });
+                inp.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendComment(inp.dataset.giftId); }
+                });
+                autosize();
+                if (focusCommentGiftId === inp.dataset.giftId) {
+                    inp.focus();
+                    inp.setSelectionRange(inp.value.length, inp.value.length);
+                }
+            });
+            focusCommentGiftId = null;
+            container.querySelectorAll('.btn-delete-comment').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const panel = btn.closest('.gcomments');
+                    deleteComment(btn.dataset.commentId, panel.dataset.giftId);
+                });
+            });
+
+            container.querySelectorAll('.btn-reserve-solo').forEach(btn => {
+                btn.addEventListener('click', () => reserveGiftSolo(btn.dataset.giftId));
+            });
+            container.querySelectorAll('.btn-join-res').forEach(btn => {
+                btn.addEventListener('click', () => openParticipationModal(btn.dataset.giftId));
+            });
+            container.querySelectorAll('.btn-withdraw-part').forEach(btn => {
+                btn.addEventListener('click', () => leaveReservation(btn.dataset.giftId));
+            });
+            container.querySelectorAll('.btn-advance-status').forEach(btn => {
+                btn.addEventListener('click', () => updateReservationStatus(btn.dataset.giftId, btn.dataset.status));
+            });
+            container.querySelectorAll('.btn-edit-suggestion').forEach(btn => {
+                btn.addEventListener('click', () => openEditSuggestionModal(btn.dataset.giftId));
+            });
+            container.querySelectorAll('.btn-delete-kid-gift').forEach(btn => {
+                btn.addEventListener('click', () => deleteGift(btn.dataset.id));
+            });
+        }
+
+
+        // ================= ONGLET C : MES RESERVATIONS =================
+        function renderMyReservations() {
+            const container = document.getElementById('my-reservations-container');
+            const emptyEl = document.getElementById('my-reservations-empty');
+            container.innerHTML = '';
+
+            let myResList = [];
+            Object.values(reservationsCache).forEach(res => {
+                const parts = res.reservation_participants || [];
+                if (parts.some(p => p.user_id === currentUser.id)) {
+                    myResList.push(res);
+                }
+            });
+
+            if (myResList.length === 0) {
+                emptyEl.classList.remove('hidden');
+                container.classList.add('hidden');
+                return;
+            }
+            emptyEl.classList.add('hidden');
+            container.classList.remove('hidden');
+
+            myResList.forEach(res => {
+                let gift = null;
+                let ownerName = 'Inconnu';
+                let targetIdForNav = null;
+
+                Object.entries(familyGiftsCache).forEach(([ownerId, list]) => {
+                    const found = list.find(g => g.id === res.gift_id);
+                    if (found) {
+                        gift = found;
+                        if (profilesCache[ownerId]) {
+                            ownerName = profilesCache[ownerId].display_name;
+                            targetIdForNav = { type: 'profile', id: ownerId, name: ownerName };
+                        } else if (allKidsCache[ownerId]) {
+                            const kid = allKidsCache[ownerId];
+                            const pName = kidParentNames(kid);
+                            ownerName = pName ? `${kid.name} (${pName})` : kid.name;
+                            targetIdForNav = { type: 'kid', id: ownerId, name: ownerName };
+                        }
+                    }
+                });
+
+                if (!gift) return;
+
+                const statusNames = { 'reserved': '🟠 Réservé', 'bought': '🔵 Acheté', 'wrapped': '🎁 Emballé' };
+                const myPart = res.reservation_participants.find(p => p.user_id === currentUser.id);
+                const myShareHTML = myPart ? formatPriceHTML(myPart.share || 0) : formatPriceHTML(0);
+
+                const row = document.createElement('div');
+                row.className = 'gift-row gift-row--resa';
+                row.innerHTML = `
+                    <div class="gift-main">
+                        <h4 class="gift-title dark:text-white text-slate-900" title="${escapeHtml(gift.title)}">${escapeHtml(gift.title)}</h4>
+                        <div class="gift-meta">
+                            <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-amber-500/20 text-amber-500 dark:text-amber-300 border border-amber-500/30">${statusNames[res.status] || res.status}</span>
+                            <span class="text-xs dark:text-slate-400 text-slate-600">Pour : <strong class="text-amber-500 dark:text-amber-400">${escapeHtml(ownerName)}</strong></span>
+                            ${gift.price ? `<span class="dark:text-slate-300 text-slate-600 text-xs">Total : ~ ${formatPriceHTML(gift.price)}</span>` : ''}
+                        </div>
+                        <div class="text-xs dark:text-slate-300 text-slate-700 flex items-center gap-1.5">
+                            <span>Votre participation / part :</span> ${myShareHTML}
+                        </div>
+                    </div>
+
+                    <div class="gift-side">
+                        <div class="gift-status">
+                            <button type="button" class="btn-goto-target text-xs text-amber-500 dark:text-amber-400 hover:underline font-semibold flex items-center gap-1.5 whitespace-nowrap" data-target-id="${targetIdForNav ? targetIdForNav.id : ''}">
+                                <i class="fa-solid fa-arrow-right"></i> Voir liste
+                            </button>
+                        </div>
+                        <div class="gift-icons">
+                            <button type="button" class="btn-leave-res-direct px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-semibold rounded-xl transition border border-red-500/30 whitespace-nowrap" data-gift-id="${gift.id}">
+                                Libérer / Annuler
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                row.querySelector('.btn-goto-target').addEventListener('click', () => {
+                    if (targetIdForNav) {
+                        selectedFamilyTarget = targetIdForNav;
+                        switchTab('family');
+                        renderFamilyMembersChips();
+                        renderFamilySelectedView();
+                    }
+                });
+
+                row.querySelector('.btn-leave-res-direct').addEventListener('click', () => {
+                    leaveReservation(gift.id);
+                });
+
+                container.appendChild(row);
+            });
+        }
+
+
+        // ================= GESTION MODALE CADEAUX & SUGGESTIONS =================
+        const modalGift = document.getElementById('modal-gift');
+        const formGift = document.getElementById('form-gift');
+        const giftVisibilityContainer = document.getElementById('gift-visibility-container');
+        const giftVisibleCheckbox = document.getElementById('gift-visible-checkbox');
+        const visibilityLabelText = document.getElementById('visibility-label-text');
+
+        function openGiftModal(giftId = null) {
+            document.getElementById('gift-id-input').value = '';
+            document.getElementById('gift-title').value = '';
+            document.getElementById('gift-price').value = '';
+            document.getElementById('gift-priority').value = '2';
+            document.getElementById('gift-link').value = '';
+            document.getElementById('gift-description').value = '';
+            document.getElementById('btn-submit-gift').textContent = "Enregistrer";
+            giftVisibilityContainer.classList.add('hidden');
+
+            if (giftId) {
+                document.getElementById('modal-gift-title').textContent = "Modifier le cadeau";
+                const gift = myGiftsCache.find(g => g.id === giftId);
+                if (gift) {
+                    document.getElementById('gift-id-input').value = gift.id;
+                    document.getElementById('gift-title').value = gift.title || '';
+                    document.getElementById('gift-price').value = gift.price || '';
+                    document.getElementById('gift-priority').value = gift.priority || 2;
+                    document.getElementById('gift-link').value = gift.link || '';
+                    document.getElementById('gift-description').value = gift.description || '';
+                }
+            } else {
+                const targetName = activeListOwnerId ? (allKidsCache[activeListOwnerId] ? allKidsCache[activeListOwnerId].name : 'de l\'enfant') : 'de votre liste';
+                document.getElementById('modal-gift-title').textContent = `Ajouter un cadeau (${targetName})`;
+            }
+
+            modalGift.classList.remove('hidden');
+        }
+
+        let tempFamilyOwnerId = null;
+        let tempFamilyKidId = null;
+        let isSuggestionModal = false;
+
+        function openGiftModalForFamily(ownerId = null, kidId = null, isSuggestion = true) {
+            tempFamilyOwnerId = ownerId;
+            tempFamilyKidId = kidId;
+            isSuggestionModal = isSuggestion;
+
+            document.getElementById('gift-id-input').value = '';
+            document.getElementById('gift-title').value = '';
+            document.getElementById('gift-price').value = '';
+            document.getElementById('gift-priority').value = '2';
+            document.getElementById('gift-link').value = '';
+            document.getElementById('gift-description').value = '';
+
+            const targetName = ownerId && profilesCache[ownerId] ? profilesCache[ownerId].display_name : (kidId && allKidsCache[kidId] ? allKidsCache[kidId].name : 'du proche');
+            
+            if (isSuggestion) {
+                document.getElementById('modal-gift-title').textContent = `Suggérer une idée à ${targetName}`;
+                document.getElementById('btn-submit-gift').textContent = "Envoyer la suggestion";
+
+                // CHANGEMENT 2 : Interrupteur de visibilité à la création (défaut : secret / non visible)
+                giftVisibilityContainer.classList.remove('hidden');
+                giftVisibleCheckbox.checked = false;
+                visibilityLabelText.textContent = `Visible pour ${targetName} (il/elle verra cette idée dans sa liste)`;
+            } else {
+                document.getElementById('modal-gift-title').textContent = `Ajouter un cadeau pour ${targetName}`;
+                document.getElementById('btn-submit-gift').textContent = "Enregistrer";
+                giftVisibilityContainer.classList.add('hidden');
+            }
+            modalGift.classList.remove('hidden');
+        }
+
+        function openEditSuggestionModal(giftId) {
+            let foundGift = null;
+            Object.values(familyGiftsCache).forEach(list => {
+                const g = list.find(item => item.id === giftId);
+                if (g) foundGift = g;
+            });
+
+            if (!foundGift) return;
+
+            document.getElementById('gift-id-input').value = foundGift.id;
+            document.getElementById('gift-title').value = foundGift.title || '';
+            document.getElementById('gift-price').value = foundGift.price || '';
+            document.getElementById('gift-priority').value = foundGift.priority || 2;
+            document.getElementById('gift-link').value = foundGift.link || '';
+            document.getElementById('gift-description').value = foundGift.description || '';
+            
+            document.getElementById('modal-gift-title').textContent = "Modifier ma suggestion";
+            document.getElementById('btn-submit-gift').textContent = "Enregistrer les modifications";
+
+            tempFamilyOwnerId = foundGift.owner_id;
+            tempFamilyKidId = foundGift.owner_kid_id;
+            isSuggestionModal = true;
+
+            // CHANGEMENT 2 : Réglage de visibilité à l'édition d'une suggestion existante
+            const targetName = tempFamilyOwnerId && profilesCache[tempFamilyOwnerId] ? profilesCache[tempFamilyOwnerId].display_name : 'du destinataire';
+            giftVisibilityContainer.classList.remove('hidden');
+            giftVisibleCheckbox.checked = !!foundGift.visible_to_owner;
+            visibilityLabelText.textContent = `Visible pour ${targetName} (il/elle verra cette idée dans sa liste)`;
+
+            modalGift.classList.remove('hidden');
+        }
+
+        document.getElementById('btn-open-add-gift').addEventListener('click', () => {
+            tempFamilyOwnerId = null;
+            tempFamilyKidId = null;
+            isSuggestionModal = false;
+            openGiftModal();
+        });
+        document.getElementById('btn-close-modal-gift').addEventListener('click', () => modalGift.classList.add('hidden'));
+
+        formGift.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const giftId = document.getElementById('gift-id-input').value;
+            const title = document.getElementById('gift-title').value.trim();
+            const priceVal = document.getElementById('gift-price').value;
+            const price = priceVal ? parseFloat(priceVal) : null;
+            const priority = parseInt(document.getElementById('gift-priority').value);
+            const link = document.getElementById('gift-link').value.trim() || null;
+            const description = document.getElementById('gift-description').value.trim() || null;
+            const visibleToOwner = giftVisibleCheckbox.checked;
+
+            try {
+                if (giftId) {
+                    let updatePayload = {
+                        title, price, priority, link, description
+                    };
+                    if (isSuggestionModal) {
+                        updatePayload.visible_to_owner = visibleToOwner;
+                    }
+                    const { error } = await sb.from('gifts').update(updatePayload).eq('id', giftId);
+                    if (error) throw error;
+                } else {
+                    let payload = {
+                        title, price, priority, link, description
+                    };
+
+                    if (tempFamilyOwnerId || tempFamilyKidId) {
+                        payload.owner_id = tempFamilyOwnerId;
+                        payload.owner_kid_id = tempFamilyKidId;
+                        if (isSuggestionModal) {
+                            payload.suggested_by = currentUser.id;
+                            payload.visible_to_owner = visibleToOwner;
+                        } else {
+                            payload.suggested_by = null;
+                            // Cadeau ajouté par le parent sur la liste de son propre enfant : visible.
+                            // Cadeau ajouté pour l'enfant d'un autre membre : reste secret.
+                            const kidObj = tempFamilyKidId ? allKidsCache[tempFamilyKidId] : null;
+                            payload.visible_to_owner = isKidParent(kidObj, currentUser.id);
+                        }
+                    } else {
+                        if (activeListOwnerId) {
+                            payload.owner_kid_id = activeListOwnerId;
+                        } else {
+                            payload.owner_id = currentUser.id;
+                        }
+                        // Cadeau créé par le propriétaire de la liste (ou son parent) : il doit le voir
+                        payload.visible_to_owner = true;
+                    }
+
+                    const { error } = await sb.from('gifts').insert(payload);
+                    if (error) throw error;
+                }
+
+                modalGift.classList.add('hidden');
+                await refreshAllData();
+            } catch (err) {
+                showAlert("Erreur", "Impossible d'enregistrer ce cadeau.");
+            }
+        });
+
+        async function deleteGift(giftId) {
+            const confirmDel = await showConfirm("Supprimer le cadeau", "Voulez-vous vraiment supprimer ce cadeau ?");
+            if (!confirmDel) return;
+            try {
+                const { error } = await sb.from('gifts').delete().eq('id', giftId);
+                if (error) throw error;
+                await refreshAllData();
+            } catch (err) {
+                showAlert("Erreur", "Impossible de supprimer ce cadeau.");
+            }
+        }
+
+
+        // ================= GESTION DES RÉSERVATIONS ET CAGNOTTES =================
+
+        async function reserveGiftSolo(giftId) {
+            try {
+                let gift = null;
+                Object.values(familyGiftsCache).forEach(list => {
+                    const found = list.find(g => g.id === giftId);
+                    if (found) gift = found;
+                });
+
+                const totalShare = gift && gift.price ? parseFloat(gift.price) : 0.00;
+
+                const { data: resData, error: resError } = await sb.from('reservations').insert({
+                    gift_id: giftId,
+                    status: 'reserved'
+                }).select().single();
+
+                if (resError) throw resError;
+
+                const { error: partError } = await sb.from('reservation_participants').insert({
+                    reservation_id: resData.id,
+                    user_id: currentUser.id,
+                    share: totalShare
+                });
+
+                if (partError) throw partError;
+                await refreshAllData();
+            } catch (err) {
+                showAlert("Erreur", "Impossible de réserver ce cadeau.");
+            }
+        }
+
+        const modalPart = document.getElementById('modal-participation');
+        const formPart = document.getElementById('form-participation');
+
+        function openParticipationModal(giftId) {
+            document.getElementById('part-gift-id').value = giftId;
+            
+            let gift = null;
+            Object.values(familyGiftsCache).forEach(list => {
+                const found = list.find(g => g.id === giftId);
+                if (found) gift = found;
+            });
+
+            if (gift) {
+                document.getElementById('part-gift-name').textContent = gift.title;
+                const total = gift.price ? parseFloat(gift.price) : 0;
+                
+                const res = reservationsCache[giftId];
+                const currentParticipants = res && res.reservation_participants ? res.reservation_participants : [];
+                
+                let alreadyContributed = 0;
+                const myPart = currentParticipants.find(p => p.user_id === currentUser.id);
+                if (myPart) {
+                    alreadyContributed = parseFloat(myPart.share || 0);
+                }
+
+                const totalContributedSoFar = currentParticipants.reduce((acc, p) => acc + parseFloat(p.share || 0), 0);
+                const remainingToCollect = Math.max(0, total - totalContributedSoFar + alreadyContributed);
+
+                const suggestedShare = myPart ? alreadyContributed : (currentParticipants.length === 0 ? total : (remainingToCollect > 0 ? remainingToCollect : 10));
+
+                document.getElementById('part-amount').value = suggestedShare.toFixed(2);
+                document.getElementById('part-info-total').innerHTML = `Prix total du cadeau : <strong>${total.toFixed(2)} €</strong><br>Déjà cagnotte : ${totalContributedSoFar.toFixed(2)} €`;
+            }
+
+            modalPart.classList.remove('hidden');
+        }
+
+        document.getElementById('btn-close-modal-part').addEventListener('click', () => modalPart.classList.add('hidden'));
+
+        formPart.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const giftId = document.getElementById('part-gift-id').value;
+            const share = parseFloat(document.getElementById('part-amount').value);
+
+            if (isNaN(share) || share <= 0) {
+                showAlert("Montant invalide", "Veuillez entrer un montant valide en euros.");
+                return;
+            }
+
+            try {
+                let res = reservationsCache[giftId];
+
+                if (!res) {
+                    const { data: newRes, error: resErr } = await sb.from('reservations').insert({
+                        gift_id: giftId,
+                        status: 'reserved'
+                    }).select().single();
+
+                    if (resErr) throw resErr;
+                    res = newRes;
+                }
+
+                const { data: existingParts, error: partCheckErr } = await sb.from('reservation_participants')
+                    .select('*')
+                    .eq('reservation_id', res.id)
+                    .eq('user_id', currentUser.id);
+
+                if (partCheckErr) throw partCheckErr;
+
+                if (existingParts && existingParts.length > 0) {
+                    const { error: updateErr } = await sb.from('reservation_participants')
+                        .update({ share: share })
+                        .eq('id', existingParts[0].id);
+                    if (updateErr) throw updateErr;
+                } else {
+                    const { error: insErr } = await sb.from('reservation_participants').insert({
+                        reservation_id: res.id,
+                        user_id: currentUser.id,
+                        share: share
+                    });
+                    if (insErr) throw insErr;
+                }
+
+                modalPart.classList.add('hidden');
+                await refreshAllData();
+            } catch (err) {
+                showAlert("Erreur", "Impossible d'enregistrer votre participation à la cagnotte.");
+            }
+        });
+
+        async function leaveReservation(giftId) {
+            const confirmLeave = await showConfirm("Libérer ce cadeau", "Voulez-vous vraiment vous retirer de cette réservation / cagnotte et libérer ce cadeau ?");
+            if (!confirmLeave) return;
+
+            try {
+                const res = reservationsCache[giftId];
+                if (!res) {
+                    await refreshAllData();
+                    return;
+                }
+
+                const { error: partErr } = await sb.from('reservation_participants')
+                    .delete()
+                    .eq('reservation_id', res.id)
+                    .eq('user_id', currentUser.id);
+
+                if (partErr) throw partErr;
+
+                const { data: remainingParts, error: checkErr } = await sb.from('reservation_participants')
+                    .select('*')
+                    .eq('reservation_id', res.id);
+
+                if (checkErr) throw checkErr;
+
+                if (!remainingParts || remainingParts.length === 0) {
+                    const { error: resDelErr } = await sb.from('reservations')
+                        .delete()
+                        .eq('id', res.id);
+
+                    if (resDelErr) throw resDelErr;
+                }
+
+                await refreshAllData();
+            } catch (err) {
+                console.error("Erreur libération réservation:", err);
+                showAlert("Erreur", "Impossible de libérer ce cadeau. Veuillez réessayer.");
+            }
+        }
+
+        async function updateReservationStatus(giftId, newStatus) {
+            try {
+                const res = reservationsCache[giftId];
+                if (!res) return;
+
+                const { error } = await sb.from('reservations')
+                    .update({ status: newStatus })
+                    .eq('id', res.id);
+
+                if (error) throw error;
+                await refreshAllData();
+            } catch (err) {
+                showAlert("Erreur", "Impossible de mettre à jour le statut.");
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        // Lancement au chargement
+        window.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            initSnow();
+            initChristmasCountdown();
+            initAuth();
+        });
+    </script>
+</body>
+</html>
