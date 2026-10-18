@@ -894,6 +894,13 @@
             });
         }
 
+        // Ajoute le détail technique renvoyé par la base (utile pour diagnostiquer un refus de droits)
+        function withDbDetail(message, err) {
+            console.error(err);
+            const d = err && (err.message || err.details);
+            return d ? `${message} (détail : ${d})` : message;
+        }
+
         function showAlert(title, message) {
             return showCustomModal(title, message, { isConfirm: false });
         }
@@ -2712,7 +2719,7 @@
                 if (partError) throw partError;
                 await refreshAllData();
             } catch (err) {
-                showAlert("Erreur", "Impossible de réserver ce cadeau.");
+                showAlert("Erreur", withDbDetail("Impossible de réserver ce cadeau.", err));
             }
         }
 
@@ -2802,7 +2809,7 @@
                 modalPart.classList.add('hidden');
                 await refreshAllData();
             } catch (err) {
-                showAlert("Erreur", "Impossible d'enregistrer votre participation à la cagnotte.");
+                showAlert("Erreur", withDbDetail("Impossible d'enregistrer votre participation à la cagnotte.", err));
             }
         });
 
