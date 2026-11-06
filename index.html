@@ -233,6 +233,19 @@
         .gc-send:hover { filter: brightness(1.1); }
         .gc-note { margin-top: .4rem; font-size: .68rem; color: #64748b; }
 
+        /* ===== Livraison / lieu de collecte ===== */
+        .gdeliv { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: .65rem; }
+        .gdeliv-chip { display: inline-flex; align-items: center; gap: .35rem; max-width: 100%; padding: .25rem .65rem; border-radius: 9999px; font-size: .72rem; font-weight: 600;
+            overflow-wrap: anywhere; color: #2563eb; background: rgba(59,130,246,.10); border: 1px solid rgba(59,130,246,.30); }
+        .dark .gdeliv-chip { color: #93c5fd; }
+        .gdeliv-chip em { font-style: normal; font-weight: 500; opacity: .8; }
+        .gdeliv-chip.is-late { color: #b45309; background: rgba(245,158,11,.14); border-color: rgba(245,158,11,.45); }
+        .dark .gdeliv-chip.is-late { color: #fbbf24; }
+        .gdeliv-edit, .gdeliv-add { display: inline-flex; align-items: center; gap: .35rem; font-size: .72rem; font-weight: 600; color: #94a3b8; padding: .25rem .5rem; border-radius: 9999px; transition: color .15s, background .15s; }
+        .gdeliv-add { border: 1px dashed rgba(148,163,184,.5); padding: .3rem .75rem; }
+        .gdeliv-edit:hover, .gdeliv-add:hover { color: #d97706; background: rgba(245,158,11,.12); }
+        .dark input[type="date"] { color-scheme: dark; }
+
         .cd-unit { font-size: .65rem; font-weight: 600; opacity: .85; margin-left: 1px; }
 
         /* Alertes, confirmations et saisies : toujours au-dessus des autres fenêtres (Paramètres, cadeau, participation…) */
@@ -619,6 +632,35 @@
         </div>
     </div>
 
+
+    <!-- Modal Livraison / lieu de collecte (s'ouvre au clic sur « J'ai acheté » ou via le crayon) -->
+    <div id="modal-delivery" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden">
+        <div class="dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-200 max-w-md w-full rounded-3xl shadow-2xl p-5 sm:p-6 relative overflow-hidden transition-colors duration-300">
+            <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-amber-500 to-red-600"></div>
+            <h3 id="dlv-title" class="font-christmas text-2xl font-bold text-amber-500 dark:text-amber-400 mb-1">Cadeau acheté 🛍️</h3>
+            <p id="dlv-gift-name" class="text-sm font-semibold dark:text-slate-300 text-slate-700"></p>
+            <p id="dlv-intro" class="text-xs dark:text-slate-400 text-slate-500 mt-1 mb-4"></p>
+
+            <form id="form-delivery" class="space-y-4">
+                <input type="hidden" id="dlv-gift-id">
+                <input type="hidden" id="dlv-mode" value="edit">
+                <div>
+                    <label for="dlv-date" class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-1"><i class="fa-solid fa-truck-fast text-amber-500 mr-1"></i> Livraison estimée</label>
+                    <input type="date" id="dlv-date" class="w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-4 py-2.5 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500">
+                    <p id="dlv-hint" class="text-xs text-amber-600 dark:text-amber-400 mt-1.5 hidden"></p>
+                </div>
+                <div>
+                    <label for="dlv-place" class="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 text-slate-600 mb-1"><i class="fa-solid fa-location-dot text-amber-500 mr-1"></i> Lieu de collecte</label>
+                    <input type="text" id="dlv-place" maxlength="120" list="dlv-place-list" autocomplete="off" class="w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-300 rounded-xl px-4 py-2.5 text-sm dark:text-white text-slate-900 focus:outline-none focus:border-amber-500" placeholder="Ex : Point Relais Carrefour, chez Mamie…">
+                    <datalist id="dlv-place-list"></datalist>
+                </div>
+                <div class="flex items-center justify-end gap-3 pt-3 border-t dark:border-slate-800 border-slate-200">
+                    <button type="button" id="btn-close-modal-delivery" class="px-4 py-2 rounded-xl dark:bg-slate-800 bg-slate-200 dark:hover:bg-slate-700 hover:bg-slate-300 dark:text-slate-300 text-slate-700 text-sm font-semibold transition">Annuler</button>
+                    <button type="submit" id="dlv-submit" class="px-5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-semibold text-sm transition shadow disabled:opacity-60">Confirmer l'achat</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- ================= MODALE ADMINISTRATION (ENFANTS) ================= -->
     <div id="modal-admin" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden">
@@ -2337,6 +2379,7 @@
                     ${gift.description ? `<p class="gcard-desc dark:text-slate-400 text-slate-600">${escapeHtml(gift.description)}</p>` : ''}
                     ${gift.link ? `<a href="${escapeHtml(gift.link)}" target="_blank" rel="noopener noreferrer" class="gcard-link text-amber-500 dark:text-amber-400 hover:underline"><i class="fa-solid fa-arrow-up-right-from-square"></i> Voir le produit</a>` : ''}
                     ${potHtml}
+                    ${(status === 'bought' && showComments) ? deliveryInfoHtml(res, gid, isParticipant) : ''}
                     <div class="gcard-foot">
                         ${primaryHtml}
                         ${(commentBtnHtml || menuHtml) ? `<div class="gcard-tools">${commentBtnHtml}${menuHtml}</div>` : ''}
@@ -2406,8 +2449,16 @@
             container.querySelectorAll('.btn-withdraw-part').forEach(btn => {
                 btn.addEventListener('click', () => leaveReservation(btn.dataset.giftId));
             });
+            container.querySelectorAll('.btn-edit-delivery').forEach(btn => {
+                btn.addEventListener('click', () => openDeliveryModal(btn.dataset.giftId, 'edit'));
+            });
             container.querySelectorAll('.btn-advance-status').forEach(btn => {
-                btn.addEventListener('click', () => updateReservationStatus(btn.dataset.giftId, btn.dataset.status));
+                btn.addEventListener('click', () => {
+                    const r = reservationsCache[btn.dataset.giftId];
+                    // « J'ai acheté » (Réservé → Acheté) : on propose de saisir livraison + lieu de collecte
+                    if (btn.dataset.status === 'bought' && r && r.status === 'reserved') openDeliveryModal(btn.dataset.giftId, 'bought');
+                    else updateReservationStatus(btn.dataset.giftId, btn.dataset.status);
+                });
             });
             container.querySelectorAll('.btn-edit-suggestion').forEach(btn => {
                 btn.addEventListener('click', () => openEditSuggestionModal(btn.dataset.giftId));
@@ -2480,6 +2531,7 @@
                         <div class="text-xs dark:text-slate-300 text-slate-700 flex items-center gap-1.5">
                             <span>Votre participation / part :</span> ${myShareHTML}
                         </div>
+                        ${deliveryInfoHtml(res, gift.id, true)}
                     </div>
 
                     <div class="gift-side">
@@ -2504,6 +2556,8 @@
                         renderFamilySelectedView();
                     }
                 });
+
+                row.querySelectorAll('.btn-edit-delivery').forEach(b => b.addEventListener('click', () => openDeliveryModal(b.dataset.giftId, 'edit')));
 
                 row.querySelector('.btn-leave-res-direct').addEventListener('click', () => {
                     leaveReservation(gift.id);
@@ -2873,6 +2927,132 @@
                 showAlert("Erreur", "Impossible de mettre à jour le statut.");
             }
         }
+
+
+        // ================= LIVRAISON / LIEU DE COLLECTE =================
+        // Stocké sur la réservation (colonnes estimated_delivery + pickup_location) : partagé entre co-acheteurs
+        // et mis à jour en temps réel. Affiché uniquement quand le cadeau est au statut « Acheté ».
+        const modalDelivery = document.getElementById('modal-delivery');
+        const formDelivery = document.getElementById('form-delivery');
+
+        function parseLocalDate(str) {
+            if (!str) return null;
+            const [y, m, d] = String(str).slice(0, 10).split('-').map(Number);
+            return (y && m && d) ? new Date(y, m - 1, d) : null;
+        }
+        function startOfToday() { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
+        function nextChristmasEve() {
+            const t = startOfToday();
+            const c = new Date(t.getFullYear(), 11, 24);
+            return t > c ? new Date(t.getFullYear() + 1, 11, 24) : c;
+        }
+
+        function deliveryInfoHtml(res, giftId, canEdit) {
+            if (!res || res.status !== 'bought') return '';
+            const date = parseLocalDate(res.estimated_delivery);
+            const place = (res.pickup_location || '').trim();
+            if (!date && !place) {
+                return canEdit ? `<div class="gdeliv"><button type="button" class="btn-edit-delivery gdeliv-add" data-gift-id="${giftId}"><i class="fa-solid fa-truck-fast"></i> Ajouter la livraison / le lieu de collecte</button></div>` : '';
+            }
+            let dateChip = '';
+            if (date) {
+                const diff = Math.round((date - startOfToday()) / 86400000);
+                let rel, late = false;
+                if (diff === 0) rel = "aujourd'hui";
+                else if (diff === 1) rel = 'demain';
+                else if (diff > 1) rel = `dans ${diff} j`;
+                else { rel = `en retard de ${-diff} j`; late = true; }
+                const afterXmas = date > nextChristmasEve();
+                const label = date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+                dateChip = `<span class="gdeliv-chip ${(late || afterXmas) ? 'is-late' : ''}"><i class="fa-solid fa-truck-fast"></i> ${escapeHtml(label)} <em>(${rel})</em>${afterXmas ? ' ⚠️ après Noël' : ''}</span>`;
+            }
+            const placeChip = place ? `<span class="gdeliv-chip"><i class="fa-solid fa-location-dot"></i> ${escapeHtml(place)}</span>` : '';
+            const editBtn = canEdit ? `<button type="button" class="btn-edit-delivery gdeliv-edit" data-gift-id="${giftId}" title="Modifier la livraison / collecte" aria-label="Modifier la livraison / collecte"><i class="fa-solid fa-pen"></i></button>` : '';
+            return `<div class="gdeliv">${dateChip}${placeChip}${editBtn}</div>`;
+        }
+
+        function updateDeliveryHint() {
+            const hint = document.getElementById('dlv-hint');
+            const d = parseLocalDate(document.getElementById('dlv-date').value);
+            if (d && d > nextChristmasEve()) {
+                hint.textContent = '⚠️ Cette date est après Noël : prévoyez peut-être un plan B.';
+                hint.classList.remove('hidden');
+            } else {
+                hint.classList.add('hidden');
+            }
+        }
+
+        function openDeliveryModal(giftId, mode) {
+            const res = reservationsCache[giftId];
+            if (!res) return;
+            let gift = null;
+            Object.values(familyGiftsCache).forEach(list => { const f = list.find(g => g.id === giftId); if (f) gift = f; });
+
+            document.getElementById('dlv-gift-id').value = giftId;
+            document.getElementById('dlv-mode').value = mode;
+            document.getElementById('dlv-gift-name').textContent = gift ? gift.title : '';
+            const isBuy = mode === 'bought';
+            document.getElementById('dlv-title').textContent = isBuy ? 'Cadeau acheté 🛍️' : 'Livraison & collecte 📦';
+            document.getElementById('dlv-intro').textContent = isBuy
+                ? "Bravo ! Indiquez, si vous le souhaitez, quand le colis arrive et où le récupérer. Vous pourrez le modifier plus tard."
+                : "Mettez à jour la date de livraison estimée et le lieu de collecte.";
+            document.getElementById('dlv-submit').textContent = isBuy ? "Confirmer l'achat" : 'Enregistrer';
+            document.getElementById('dlv-date').value = res.estimated_delivery ? String(res.estimated_delivery).slice(0, 10) : '';
+            document.getElementById('dlv-place').value = res.pickup_location || '';
+
+            // Suggestions : les lieux déjà utilisés dans mes réservations
+            const places = new Set();
+            Object.values(reservationsCache).forEach(r => {
+                const mine = (r.reservation_participants || []).some(p => p.user_id === currentUser.id);
+                if (mine && r.pickup_location && r.pickup_location.trim()) places.add(r.pickup_location.trim());
+            });
+            document.getElementById('dlv-place-list').innerHTML = [...places].map(pl => `<option value="${escapeHtml(pl)}"></option>`).join('');
+
+            updateDeliveryHint();
+            modalDelivery.classList.remove('hidden');
+        }
+
+        document.getElementById('dlv-date').addEventListener('input', updateDeliveryHint);
+        document.getElementById('btn-close-modal-delivery').addEventListener('click', () => modalDelivery.classList.add('hidden'));
+
+        formDelivery.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const giftId = document.getElementById('dlv-gift-id').value;
+            const mode = document.getElementById('dlv-mode').value;
+            const res = reservationsCache[giftId];
+            if (!res) { modalDelivery.classList.add('hidden'); return; }
+
+            const payload = {
+                estimated_delivery: document.getElementById('dlv-date').value || null,
+                pickup_location: document.getElementById('dlv-place').value.trim() || null
+            };
+            if (mode === 'bought') payload.status = 'bought'; // statut + livraison enregistrés en une seule requête : toujours synchrones
+
+            const submitBtn = document.getElementById('dlv-submit');
+            submitBtn.disabled = true;
+            try {
+                const { error } = await sb.from('reservations').update(payload).eq('id', res.id);
+                if (error && /estimated_delivery|pickup_location/i.test(`${error.message || ''} ${error.details || ''}`)) {
+                    // Migration SQL pas encore exécutée : on ne bloque pas le passage en « Acheté »
+                    if (mode === 'bought') {
+                        const { error: e2 } = await sb.from('reservations').update({ status: 'bought' }).eq('id', res.id);
+                        if (e2) throw e2;
+                    }
+                    modalDelivery.classList.add('hidden');
+                    await refreshAllData();
+                    showAlert("Migration SQL requise", (mode === 'bought' ? "Le cadeau est bien passé en « Acheté », mais l" : "L") +
+                        "a date de livraison et le lieu de collecte n'ont pas pu être enregistrés : la base n'a pas encore les colonnes nécessaires. Exécutez la migration SQL fournie, puis réessayez.");
+                    return;
+                }
+                if (error) throw error;
+                modalDelivery.classList.add('hidden');
+                await refreshAllData();
+            } catch (err) {
+                showAlert("Erreur", withDbDetail("Impossible d'enregistrer la livraison.", err));
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
 
         function escapeHtml(str) {
             if (!str) return '';
